@@ -80,9 +80,9 @@ func callFilter(src interface{}, value string) (interface{}, error) {
 		name := v[1]
 		params := v[2]
 
-		src_value := reflect.ValueOf(src)
-		param_value := reflect.ValueOf(params)
-		next, err := applyFilter(name, &src_value, &param_value)
+		srcValue := reflect.ValueOf(src)
+		paramValue := reflect.ValueOf(params)
+		next, err := applyFilter(name, &srcValue, &paramValue)
 		if err != nil {
 			continue
 		}
@@ -203,9 +203,10 @@ func floatval(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return v, nil
 }
 
+var hrefFilterExp = regexp.MustCompile(`href(\s*)=(\s*)([\w\W]+?)"`)
+
 func hrefreplace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	href_filter_regexp, _ := regexp.Compile(`href(\s*)=(\s*)([\w\W]+?)"`)
-	return href_filter_regexp.ReplaceAllString(src.String(), params.String()), nil
+	return hrefFilterExp.ReplaceAllString(src.String(), params.String()), nil
 }
 
 func regexpreplace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
@@ -306,13 +307,13 @@ func sprintfmap(src *reflect.Value, params *reflect.Value) (interface{}, error) 
 	if len(vt) <= 1 {
 		return src.Interface(), errors.New("params length must > 1")
 	}
-	p_array := []interface{}{}
+	pArray := []interface{}{}
 	for _, x := range vt[1:] {
 		if vm, ok := msrc[x]; ok {
-			p_array = append(p_array, vm)
+			pArray = append(pArray, vm)
 		}
 	}
-	return fmt.Sprintf(vt[0], p_array...), nil
+	return fmt.Sprintf(vt[0], pArray...), nil
 }
 
 func unixtime(src *reflect.Value, params *reflect.Value) (interface{}, error) {
@@ -328,8 +329,8 @@ func paging(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter paging nil params")
 	}
-	src_type := src.Type().Kind()
-	if src_type != reflect.Slice && src_type != reflect.Array && src_type != reflect.String {
+	srcType := src.Type().Kind()
+	if srcType != reflect.Slice && srcType != reflect.Array && srcType != reflect.String {
 		return src.Interface(), errors.New("value is not slice ,array or string")
 	}
 	vt := strings.Split(params.String(), ",")
@@ -403,7 +404,7 @@ func paging(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 func sprintf_replace(src string, param []string) string {
-	for i, _ := range param {
+	for i := range param {
 		src = strings.Replace(src, "{"+strconv.Itoa(i)+"}", param[i], -1)
 	}
 	return src

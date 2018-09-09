@@ -48,6 +48,13 @@ const (
 	PAGE_TEXT = "text"
 )
 
+var (
+	attrExp            = regexp.MustCompile(PT_ATTR)
+	attrArrayExp       = regexp.MustCompile(PT_ATTR_ARRAY)
+	fnExp              = regexp.MustCompile(`([a-z_]+)(\(([\w\W+]+)\))?`)
+	jsonNumberIndexExp = regexp.MustCompile(`^\[(\d+)\]$`)
+)
+
 type PipeItem struct {
 	Name     string     `json:"name,omitempty"`
 	Selector string     `json:"selector,omitempty"`
@@ -120,8 +127,8 @@ func (p *PipeItem) parseRegexp(body string) (interface{}, error) {
 		if err != nil {
 			return nil, errors.New("jsonparse: text is not a json string" + err.Error())
 		}
-		parse_item := p.SubItem[0]
-		res, err := parse_item.pipeJson(body)
+		parseItem := p.SubItem[0]
+		res, err := parseItem.pipeJson(body)
 		if err != nil {
 			return nil, err
 		}
@@ -173,18 +180,15 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		return nil, errors.New("Selector can't Find node!: " + selector)
 	}
 
-	attr_exp, _ := regexp.Compile(PT_ATTR)
-	attr_array_exp, _ := regexp.Compile(PT_ATTR_ARRAY)
-
-	if attr_exp.MatchString(p.Type) {
-		vt := attr_exp.FindStringSubmatch(p.Type)
+	if attrExp.MatchString(p.Type) {
+		vt := attrExp.FindStringSubmatch(p.Type)
 		res, has := sel.Attr(vt[1])
 		if !has {
 			return nil, errors.New("Can't Find attribute: " + p.Type + " selector: " + selector)
 		}
 		return callFilter(res, p.Filter)
-	} else if attr_array_exp.MatchString(p.Type) {
-		vt := attr_array_exp.FindStringSubmatch(p.Type)
+	} else if attrArrayExp.MatchString(p.Type) {
+		vt := attrArrayExp.FindStringSubmatch(p.Type)
 		res := make([]string, 0)
 		sel.Each(func(index int, child *goquery.Selection) {
 			href, has := child.Attr(vt[1])
@@ -241,10 +245,10 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, errors.New("Pipe type array need one subItem!")
 		}
-		array_item := p.SubItem[0]
+		arrayItem := p.SubItem[0]
 		res := make([]interface{}, 0)
 		sel.Each(func(index int, child *goquery.Selection) {
-			v, _ := array_item.pipeSelection(child)
+			v, _ := arrayItem.pipeSelection(child)
 			res = append(res, v)
 		})
 		return callFilter(res, p.Filter)
@@ -285,13 +289,12 @@ func parseHtmlSelector(s *goquery.Selection, selector string) (htmlselector, err
 	}
 
 	s = s.Find(subs[0])
-	exp, _ := regexp.Compile(`([a-z_]+)(\(([\w\W+]+)\))?`)
 	for i := 1; i < len(subs); i++ {
-		if !exp.MatchString(subs[i]) {
+		if !fnExp.MatchString(subs[i]) {
 			return htmlselector{s, attr, selector}, errors.New("error parse html selector: " + subs[i])
 		}
 
-		vt := exp.FindStringSubmatch(subs[i])
+		vt := fnExp.FindStringSubmatch(subs[i])
 		fn := vt[1]
 		params := ""
 		if len(vt) > 3 {
@@ -409,10 +412,8 @@ func gethtmlattr_array(sel *goquery.Selection, attr, selector string) ([]string,
 		return res, nil
 	}
 
-	attr_exp, _ := regexp.Compile(PT_ATTR)
-
-	if attr_exp.MatchString(attr) {
-		vt := attr_exp.FindStringSubmatch(attr)
+	if attrExp.MatchString(attr) {
+		vt := attrExp.FindStringSubmatch(attr)
 		sel.Each(func(index int, child *goquery.Selection) {
 			text, has := child.Attr(vt[1])
 			if has {
@@ -442,10 +443,8 @@ func gethtmlattr(sel *goquery.Selection, attr, selector string) (string, error) 
 		return sel.Text(), nil
 	}
 
-	attr_exp, _ := regexp.Compile(PT_ATTR)
-
-	if attr_exp.MatchString(attr) {
-		vt := attr_exp.FindStringSubmatch(attr)
+	if attrExp.MatchString(attr) {
+		vt := attrExp.FindStringSubmatch(attr)
 		res, has := sel.Attr(vt[1])
 		if !has {
 			return "", errors.New("Can't Find attribute: " + attr + " selector: " + selector)
@@ -482,16 +481,15 @@ func parseJsonSelector(js *simplejson.Json, selector string) (*simplejson.Json, 
 				}
 			}
 			s = s[index:]
-			exp, _ := regexp.Compile(`^\[(\d+)\]$`)
-			if !exp.MatchString(s) {
+			if !jsonNumberIndexExp.MatchString(s) {
 				return nil, errors.New("parse json selector error:  " + selector)
 			}
-			v := exp.FindStringSubmatch(s)
-			int_v, err := strconv.Atoi(v[1])
+			v := jsonNumberIndexExp.FindStringSubmatch(s)
+			intV, err := strconv.Atoi(v[1])
 			if err != nil {
 				return nil, err
 			}
-			js = js.GetIndex(int_v)
+			js = js.GetIndex(intV)
 		} else {
 			if s == "this" {
 				continue
@@ -537,16 +535,16 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, errors.New("Pipe type jsonparse need one subItem!")
 		}
-		body_str := strings.TrimSpace(js.MustString(""))
-		if body_str == "" {
+		bodyStr := strings.TrimSpace(js.MustString(""))
+		if bodyStr == "" {
 			return nil, nil
 		}
-		body, err := text2jsonbyte(body_str)
+		body, err := text2jsonbyte(bodyStr)
 		if err != nil {
 			return nil, errors.New("jsonparse: text is not a json string" + err.Error())
 		}
-		parse_item := p.SubItem[0]
-		res, err := parse_item.pipeJson(body)
+		parseItem := p.SubItem[0]
+		res, err := parseItem.pipeJson(body)
 		if err != nil {
 			return nil, err
 		}
@@ -560,11 +558,11 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, errors.New("Pipe type array need one subItem!")
 		}
-		array_item := p.SubItem[0]
+		arrayItem := p.SubItem[0]
 		res := make([]interface{}, 0)
 		for _, r := range v {
 			data, _ := json.Marshal(r)
-			vl, _ := array_item.pipeJson(data)
+			vl, _ := arrayItem.pipeJson(data)
 			res = append(res, vl)
 		}
 		return callFilter(res, p.Filter)
@@ -590,30 +588,30 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 }
 
 func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
-	body_str := string(body)
+	bodyStr := string(body)
 	if strings.HasPrefix(p.Selector, "regexp:") {
-		return p.parseRegexp(body_str)
+		return p.parseRegexp(bodyStr)
 	}
 
 	switch p.Type {
 	case PT_INT, PT_FLOAT, PT_BOOL:
-		val, err := parseTextValue(body_str, p.Type)
+		val, err := parseTextValue(bodyStr, p.Type)
 		if err != nil {
 			return nil, err
 		}
 		return callFilter(val, p.Filter)
 	case PT_TEXT, PT_STRING:
-		return callFilter(body_str, p.Filter)
+		return callFilter(bodyStr, p.Filter)
 	case PT_JSON_PARSE:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, errors.New("Pipe type jsonparse need one subItem!")
 		}
-		body, err := text2jsonbyte(body_str)
+		body, err := text2jsonbyte(bodyStr)
 		if err != nil {
 			return nil, errors.New("jsonparse: text is not a json string" + err.Error())
 		}
-		parse_item := p.SubItem[0]
-		res, err := parse_item.pipeJson(body)
+		parseItem := p.SubItem[0]
+		res, err := parseItem.pipeJson(body)
 		if err != nil {
 			return nil, err
 		}
