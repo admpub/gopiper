@@ -7,9 +7,9 @@ import (
 	"log"
 	"testing"
 
+	"github.com/admpub/gohttp"
 	"github.com/axgle/mahonia"
 	simplejson "github.com/bitly/go-simplejson"
-	"github.com/lauyoume/gohttp"
 )
 
 func TestSelector(t *testing.T) {
@@ -18,8 +18,11 @@ func TestSelector(t *testing.T) {
 		log.Println(err)
 		return
 	}
-	js, err = parseJsonSelector(js, "this.value[2].data[1]")
-	log.Println(js, err)
+	if js, err = parseJsonSelector(js, "this.value[2].data[1]"); err != nil {
+		t.Fatal(err)
+	} else {
+		showjson(js)
+	}
 }
 
 func TestJsonPipe(t *testing.T) {
@@ -63,7 +66,11 @@ func TestJsonPipe(t *testing.T) {
 		}
 	`), &pipe)
 
-	fmt.Println(pipe.PipeBytes(body, "json"))
+	if val, err := pipe.PipeBytes(body, "json"); err != nil {
+		t.Fatal(err)
+	} else {
+		showjson(val)
+	}
 }
 
 func TestHtmlDouban(t *testing.T) {
@@ -281,8 +288,7 @@ func TestHtmlJingJiang(t *testing.T) {
 	}
 
 	v, _ := (pipe.PipeBytes(body, "html"))
-	bd, _ := json.Marshal(v)
-	fmt.Println(string(bd))
+	showjson(v)
 }
 
 func TestBaiduLocal(t *testing.T) {
@@ -328,8 +334,7 @@ func TestBaiduLocal(t *testing.T) {
 	}
 
 	v, _ := (pipe.PipeBytes(body, "html"))
-	bd, _ := json.Marshal(v)
-	fmt.Println(string(bd))
+	showjson(v)
 }
 
 func TestTTKBPaging(t *testing.T) {
@@ -364,6 +369,5 @@ func TestTTKBPaging(t *testing.T) {
 	}
 
 	v, _ := (pipe.PipeBytes(body, "json"))
-	bd, _ := json.Marshal(v)
-	fmt.Println(string(bd))
+	showjson(v)
 }
