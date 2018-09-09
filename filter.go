@@ -56,10 +56,15 @@ func ReplaceFilter(name string, fn FilterFunction) {
 	filters[name] = fn
 }
 
+var (
+	filterExp     = regexp.MustCompile(`([a-zA-Z0-9\-_]+)(?:\(([\w\W]*?)\))?(\||$)`)
+	hrefFilterExp = regexp.MustCompile(`href(\s*)=(\s*)([\w\W]+?)"`)
+)
+
 func applyFilter(name string, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	fn, existing := filters[name]
 	if !existing {
-		return nil, errors.New(fmt.Sprintf("Filter with name '%s' not found.", name))
+		return nil, fmt.Errorf("Filter with name '%s' not found.", name)
 	}
 	return fn(src, params)
 }
@@ -70,8 +75,7 @@ func callFilter(src interface{}, value string) (interface{}, error) {
 		return src, nil
 	}
 
-	exp, _ := regexp.Compile(`([a-zA-Z0-9\-_]+)(?:\(([\w\W]*?)\))?(\||$)`)
-	vt := exp.FindAllStringSubmatch(value, -1)
+	vt := filterExp.FindAllStringSubmatch(value, -1)
 
 	for _, v := range vt {
 		if len(v) < 3 {
@@ -202,8 +206,6 @@ func floatval(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	v, _ := strconv.ParseFloat(src.String(), 64)
 	return v, nil
 }
-
-var hrefFilterExp = regexp.MustCompile(`href(\s*)=(\s*)([\w\W]+?)"`)
 
 func hrefreplace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return hrefFilterExp.ReplaceAllString(src.String(), params.String()), nil
