@@ -349,7 +349,9 @@ func paging(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	offset := -1
 	if len(vt) == 3 {
 		offset, err = strconv.Atoi(vt[2])
-		return src.Interface(), errors.New("params type error:need int." + err.Error())
+		if err != nil {
+			return src.Interface(), errors.New("params type error:need int." + err.Error())
+		}
 		if offset < 1 {
 			return src.Interface(), errors.New("offset must > 0")
 		}
