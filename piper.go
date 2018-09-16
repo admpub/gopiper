@@ -278,18 +278,22 @@ func parseHtmlSelector(s *goquery.Selection, selector string) (htmlselector, err
 		return htmlselector{s, attr, selector}, nil
 	}
 
+	// html: <a class="bn-sharing" data-type="book"></a>
+	// selector: a.bn-sharing//attr[data-type]
 	if idx := strings.Index(selector, "//"); idx > 0 {
 		attr = strings.TrimSpace(selector[idx+2:])
 		selector = strings.TrimSpace(selector[:idx])
 	}
 
+	// selector: ul > li | eq(2)
 	subs := strings.Split(selector, "|")
 	if len(subs) < 1 {
 		return htmlselector{s.Find(selector), attr, selector}, nil
 	}
-
+	subs[0] = strings.TrimSpace(subs[0])
 	s = s.Find(subs[0])
 	for i := 1; i < len(subs); i++ {
+		subs[i] = strings.TrimSpace(subs[i])
 		if !fnExp.MatchString(subs[i]) {
 			return htmlselector{s, attr, selector}, errors.New("error parse html selector: " + subs[i])
 		}
