@@ -4,9 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/webx-top/com"
+
+	"github.com/admpub/regexp2"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/bitly/go-simplejson"
@@ -46,6 +51,9 @@ const (
 	PAGE_JS   = "js"
 	PAGE_XML  = "xml"
 	PAGE_TEXT = "text"
+
+	REGEXP_PRE  = "regexp:"
+	REGEXP2_PRE = "regexp2:"
 )
 
 var (
@@ -85,15 +93,38 @@ func (p *PipeItem) PipeBytes(body []byte, pagetype string) (interface{}, error) 
 	return nil, nil
 }
 
-func (p *PipeItem) parseRegexp(body string) (interface{}, error) {
-	s := p.Selector[7:]
-	exp, err := regexp.Compile(s)
-	if err != nil {
-		return nil, err
+func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error) {
+	var (
+		preLen int
+		sv     []string
+		rs     string
+	)
+	if useRegexp2 {
+		preLen = len(REGEXP2_PRE)
+	} else {
+		preLen = len(REGEXP_PRE)
 	}
-
-	sv := exp.FindStringSubmatch(body)
-	rs := ""
+	s := p.Selector[preLen:]
+	if useRegexp2 {
+		exp, err := regexp2.Compile(s, regexp2.None)
+		if err != nil {
+			return nil, err
+		}
+		mch, err := exp.FindStringMatch(body)
+		if err != nil {
+			return nil, err
+		}
+		if mch != nil {
+			sv = mch.Slice()
+			fmt.Println(`[regexp2][matched:`+strconv.Itoa(mch.GroupCount())+`]`, mch.String(), com.Dump(sv, false))
+		}
+	} else {
+		exp, err := regexp.Compile(s)
+		if err != nil {
+			return nil, err
+		}
+		sv = exp.FindStringSubmatch(body)
+	}
 
 	if len(sv) == 1 {
 		rs = sv[0]
@@ -161,10 +192,13 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		sel = htmlselector{s, "", p.Selector}
 		err error
 	)
-
-	if strings.HasPrefix(p.Selector, "regexp:") {
+	if strings.HasPrefix(p.Selector, REGEXP_PRE) {
 		body, _ := sel.Html()
-		return p.parseRegexp(body)
+		return p.parseRegexp(body, false)
+	}
+	if strings.HasPrefix(p.Selector, REGEXP2_PRE) {
+		body, _ := sel.Html()
+		return p.parseRegexp(body, true)
 	}
 
 	selector := p.Selector
@@ -593,8 +627,11 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 
 func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 	bodyStr := string(body)
-	if strings.HasPrefix(p.Selector, "regexp:") {
-		return p.parseRegexp(bodyStr)
+	if strings.HasPrefix(p.Selector, REGEXP_PRE) {
+		return p.parseRegexp(bodyStr, false)
+	}
+	if strings.HasPrefix(p.Selector, REGEXP2_PRE) {
+		return p.parseRegexp(bodyStr, true)
 	}
 
 	switch p.Type {

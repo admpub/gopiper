@@ -12,6 +12,24 @@ import (
 	simplejson "github.com/bitly/go-simplejson"
 )
 
+func TestRegexp(t *testing.T) {
+	pipe := PipeItem{
+		Type:     "string-array",
+		Selector: "regexp2:^<([a-z]+)>([a-z]+)([\\d]+)</\\1>$",
+	}
+	if js, err := pipe.parseRegexp("<a>bcdefgh123</a>", true); err != nil {
+		t.Fatal(err)
+	} else {
+		/*
+					[
+			    		"bcdefgh",
+			    		"123"
+					]
+		*/
+		showjson(js)
+	}
+}
+
 func TestSelector(t *testing.T) {
 	js, err := simplejson.NewJson([]byte(`{"value": ["1","2",{"data": ["3", "2", "1"]}]}`))
 	if err != nil {
