@@ -199,7 +199,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 	}
 
 	selector := p.Selector
-	if selector != "" {
+	if len(selector) > 0 {
 		sel, err = parseHtmlSelector(s, selector)
 		if err != nil {
 			return nil, err
@@ -239,14 +239,14 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		}
 		return callFilter(val, p.Filter)
 	case PT_HTML:
-		html := ""
+		var html string
 		sel.Each(func(idx int, s1 *goquery.Selection) {
 			str, _ := s1.Html()
 			html += str
 		})
 		return callFilter(html, p.Filter)
 	case PT_OUT_HTML:
-		html := ""
+		var html string
 		sel.Each(func(idx int, s1 *goquery.Selection) {
 			str, _ := goquery.OuterHtml(s1)
 			html += str
@@ -305,8 +305,8 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 }
 
 func parseHtmlSelector(s *goquery.Selection, selector string) (htmlselector, error) {
-	attr := ""
-	if selector == "" {
+	var attr string
+	if len(selector) == 0 {
 		return htmlselector{s, attr, selector}, nil
 	}
 
@@ -332,7 +332,7 @@ func parseHtmlSelector(s *goquery.Selection, selector string) (htmlselector, err
 
 		vt := fnExp.FindStringSubmatch(subs[i])
 		fn := vt[1]
-		params := ""
+		var params string
 		if len(vt) > 3 {
 			params = strings.TrimSpace(vt[3])
 		}
@@ -360,47 +360,47 @@ func parseHtmlSelector(s *goquery.Selection, selector string) (htmlselector, err
 		case "parents":
 			s = s.Parents()
 		case "not":
-			if params != "" {
+			if len(params) > 0 {
 				s = s.Not(params)
 			}
 		case "filter":
-			if params != "" {
+			if len(params) > 0 {
 				s = s.Filter(params)
 			}
 		case "prevfilter":
-			if params != "" {
+			if len(params) > 0 {
 				s = s.PrevFiltered(params)
 			}
 		case "prevallfilter":
-			if params != "" {
+			if len(params) > 0 {
 				s = s.PrevAllFiltered(params)
 			}
 		case "nextfilter":
-			if params != "" {
+			if len(params) > 0 {
 				s = s.NextFiltered(params)
 			}
 		case "nextallfilter":
-			if params != "" {
+			if len(params) > 0 {
 				s = s.NextAllFiltered(params)
 			}
 		case "parentfilter":
-			if params != "" {
+			if len(params) > 0 {
 				s = s.ParentFiltered(params)
 			}
 		case "parentsfilter":
-			if params != "" {
+			if len(params) > 0 {
 				s = s.ParentsFiltered(params)
 			}
 		case "childrenfilter":
-			if params != "" {
+			if len(params) > 0 {
 				s = s.ChildrenFiltered(params)
 			}
 		case "siblingsfilter":
-			if params != "" {
+			if len(params) > 0 {
 				s = s.SiblingsFiltered(params)
 			}
 		case "rm":
-			if params != "" {
+			if len(params) > 0 {
 				s.Find(params).Remove()
 			}
 		}
@@ -441,7 +441,7 @@ func parseHtmlAttr(sel htmlselector, tp string) (interface{}, error) {
 
 func gethtmlattr_array(sel *goquery.Selection, attr, selector string) ([]string, error) {
 	res := make([]string, 0)
-	if attr == "" {
+	if len(attr) == 0 {
 		sel.Each(func(index int, child *goquery.Selection) {
 			res = append(res, child.Text())
 		})
@@ -457,13 +457,15 @@ func gethtmlattr_array(sel *goquery.Selection, attr, selector string) ([]string,
 			}
 		})
 		return res, nil
-	} else if attr == "html" {
+	}
+	if attr == "html" {
 		sel.Each(func(idx int, s1 *goquery.Selection) {
 			str, _ := s1.Html()
 			res = append(res, str)
 		})
 		return res, nil
-	} else if attr == "outhtml" {
+	}
+	if attr == "outhtml" {
 		sel.Each(func(idx int, s1 *goquery.Selection) {
 			str, _ := goquery.OuterHtml(s1)
 			res = append(res, str)
@@ -475,7 +477,7 @@ func gethtmlattr_array(sel *goquery.Selection, attr, selector string) ([]string,
 }
 
 func gethtmlattr(sel *goquery.Selection, attr, selector string) (string, error) {
-	if attr == "" {
+	if len(attr) == 0 {
 		return sel.Text(), nil
 	}
 
@@ -486,15 +488,17 @@ func gethtmlattr(sel *goquery.Selection, attr, selector string) (string, error) 
 			return "", errors.New("Can't Find attribute: " + attr + " selector: " + selector)
 		}
 		return res, nil
-	} else if attr == "html" {
-		html := ""
+	}
+	if attr == "html" {
+		var html string
 		sel.Each(func(idx int, s1 *goquery.Selection) {
 			str, _ := s1.Html()
 			html += str
 		})
 		return html, nil
-	} else if attr == "outhtml" {
-		html := ""
+	}
+	if attr == "outhtml" {
+		var html string
 		sel.Each(func(idx int, s1 *goquery.Selection) {
 			str, _ := goquery.OuterHtml(s1)
 			html += str
@@ -507,7 +511,6 @@ func gethtmlattr(sel *goquery.Selection, attr, selector string) (string, error) 
 
 func parseJsonSelector(js *simplejson.Json, selector string) (*simplejson.Json, error) {
 	subs := strings.Split(selector, ".")
-
 	for _, s := range subs {
 		if index := strings.Index(s, "["); index >= 0 {
 			if index > 0 {
@@ -537,13 +540,12 @@ func parseJsonSelector(js *simplejson.Json, selector string) (*simplejson.Json, 
 }
 
 func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
-
 	js, err := simplejson.NewJson(body)
 	if err != nil {
 		return nil, err
 	}
 
-	if p.Selector != "" {
+	if len(p.Selector) > 0 {
 		js, err = parseJsonSelector(js, p.Selector)
 		if err != nil {
 			return nil, err
@@ -572,7 +574,7 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 			return nil, errors.New("Pipe type jsonparse need one subItem!")
 		}
 		bodyStr := strings.TrimSpace(js.MustString(""))
-		if bodyStr == "" {
+		if len(bodyStr) == 0 {
 			return nil, nil
 		}
 		body, err := text2jsonbyte(bodyStr)
@@ -667,7 +669,7 @@ func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 		}
 		res := make(map[string]interface{})
 		for _, subitem := range p.SubItem {
-			if subitem.Name == "" {
+			if len(subitem.Name) == 0 {
 				continue
 			}
 			res[subitem.Name], _ = subitem.pipeText(body)
