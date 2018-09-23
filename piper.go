@@ -218,7 +218,8 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 			return nil, errors.New("Can't Find attribute: " + p.Type + " selector: " + selector)
 		}
 		return callFilter(res, p.Filter)
-	} else if attrArrayExp.MatchString(p.Type) {
+	}
+	if attrArrayExp.MatchString(p.Type) {
 		vt := attrArrayExp.FindStringSubmatch(p.Type)
 		res := make([]string, 0)
 		sel.Each(func(index int, child *goquery.Selection) {
