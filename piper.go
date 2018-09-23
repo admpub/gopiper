@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/webx-top/com"
 
 	"github.com/admpub/regexp2"
 
@@ -116,7 +113,7 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 		}
 		if mch != nil {
 			sv = mch.Slice()
-			fmt.Println(`[regexp2][matched:`+strconv.Itoa(mch.GroupCount())+`]`, mch.String(), com.Dump(sv, false))
+			//fmt.Println(`[regexp2][matched:`+strconv.Itoa(mch.GroupCount())+`]`, mch.String(), com.Dump(sv, false))
 		}
 	} else {
 		exp, err := regexp.Compile(s)
