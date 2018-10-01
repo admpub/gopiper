@@ -10,9 +10,29 @@ import (
 	"github.com/admpub/gohttp"
 	"github.com/axgle/mahonia"
 	simplejson "github.com/bitly/go-simplejson"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRegexp(t *testing.T) {
+	/*
+		for i := 65281; i < 65375; i++ {
+			fmt.Println(`[` + string(i) + `] => [` + _tosbc(string(i)) + `]`)
+		}
+		panic(`[` + string(12288) + `] => [` + _tosbc(string(12288)) + `]`)
+	// */
+	params := SplitParams(`\,b,c,d`)
+	assert.Equal(t, []string{`,b`, `c`, `d`}, params)
+	showjson(hrefFilterExp.FindAllStringSubmatch(`href="http://admpub.com"`, -1))
+	match, err := hrefFilterExp2.FindStringMatch(`href="http://admpub.com"`)
+	if err != nil {
+		panic(err)
+	}
+	showjson(match.Slice())
+	result, err := hrefFilterExp2.Replace(`<a href="http://admpub.com/index" ></a><a href="http://admpub.com/admin" ></a>`, "data-url='$2'", 0, -1)
+	if err != nil {
+		panic(err)
+	}
+	assert.Equal(t, `<a data-url='http://admpub.com/index' ></a><a data-url='http://admpub.com/admin' ></a>`, result)
 	pipe := PipeItem{
 		Type:     "string-array",
 		Selector: "regexp2:^<([a-z]+)>([a-z]+)([\\d]+)</\\1>$",
@@ -21,12 +41,15 @@ func TestRegexp(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		/*
-					[
-			    		"bcdefgh",
-			    		"123"
-					]
+			[
+				"bcdefgh",
+				"123"
+			]
 		*/
+		fmt.Println(`=== [ TestRegexp ] ===================================\`)
 		showjson(js)
+		fmt.Println(`=== [ TestRegexp ] ===================================/`)
+		fmt.Println()
 	}
 }
 
@@ -39,7 +62,10 @@ func TestSelector(t *testing.T) {
 	if js, err = parseJsonSelector(js, "this.value[2].data[1]"); err != nil {
 		t.Fatal(err)
 	} else {
+		fmt.Println(`=== [ TestSelector ] ===================================\`)
 		showjson(js)
+		fmt.Println(`=== [ TestSelector ] ===================================/`)
+		fmt.Println()
 	}
 }
 
@@ -87,12 +113,14 @@ func TestJsonPipe(t *testing.T) {
 	if val, err := pipe.PipeBytes(body, "json"); err != nil {
 		t.Fatal(err)
 	} else {
+		fmt.Println(`=== [ TestJsonPipe ] ===================================\`)
 		showjson(val)
+		fmt.Println(`=== [ TestJsonPipe ] ===================================/`)
+		fmt.Println()
 	}
 }
 
 func TestHtmlDouban(t *testing.T) {
-
 	pb := []byte(`
 {
 	"type": "map",
@@ -199,13 +227,19 @@ func TestHtmlDouban(t *testing.T) {
 	if val, err := test_piper("http://movie.douban.com/subject/25850640/", "html", pb); err != nil {
 		t.Fatal(err)
 	} else {
+		fmt.Println(`=== [ TestHtmlDouban ] ===================================\`)
 		showjson(val)
+		fmt.Println(`=== [ TestHtmlDouban ] ===================================/`)
+		fmt.Println()
 	}
 
 	if val, err := test_piper("http://movie.douban.com/subject/2035218/?from=tag_all", "html", pb); err != nil {
 		t.Fatal(err)
 	} else {
+		fmt.Println(`=== [ TestHtmlDouban ] ===================================\`)
 		showjson(val)
+		fmt.Println(`=== [ TestHtmlDouban ] ===================================/`)
+		fmt.Println()
 	}
 
 }
@@ -254,9 +288,11 @@ func TestBaidu(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 		return
-	} else {
-		showjson(val)
 	}
+	fmt.Println(`=== [ TestBaidu ] ===================================\`)
+	showjson(val)
+	fmt.Println(`=== [ TestBaidu ] ===================================/`)
+	fmt.Println()
 }
 
 func TestHtmlJingJiang(t *testing.T) {
@@ -264,11 +300,58 @@ func TestHtmlJingJiang(t *testing.T) {
 
 	resp, _ := req.Get("http://www.jjwxc.net/bookbase_slave.php?submit=&booktype=&opt=&page=3&endstr=&orderstr=4").End()
 
-	defer resp.Body.Close()
-	body_gbk, _ := ioutil.ReadAll(resp.Body)
+	/*
+		   <table class="cytable" width="986" cellspacing="0" cellpadding="0" border="0" align="center">
+		        <tbody>
+		            <tr>
+		                <td class="sptd" width="128">作者</td>
+		                <td class="sptd" width="290">作品</td>
+		                <td class="sptd" width="194">类型</td>
+		                <td class="sptd" width="50">风格</td>
+		                <td class="sptd" width="48">进度</td>
+		                <td class="sptd" width="63">字数</td>
+		                <td class="sptd" width="73">作品积分</td>
+		                <td class="sptd" width="138">发表时间</td>
+		            </tr>
+		            <tr onmouseover="this.bgColor = '#ffffff';" onmouseout="this.bgColor = '#eefaee';" bgcolor="#eefaee">
+		                <td align="left"><a href="oneauthor.php?authorid=335780" target="_blank">雾矢翊</a></td>
+		                <td align="left"><a href="onebook.php?novelid=2680387" target="_blank" rel="
+		                                               与神兽的秀恩爱日常！<br />标签：灵异神怪 重生 甜文                                                            " class="tooltip">与天同兽</a>
+		                </td>
+		            	<td align="center">
+													   原创-言情-架空历史-爱情
+						</td>
+		                <td align="center">轻松                                        </td>
+		                <td align="center">
+		                    <font color="red">已完成</font>                                        </td>
+		                <td align="right">2784511</td>
+		                <td align="right">3216333568</td>
+		                <td align="center">2016-02-13 12:03:00</td>
+		            </tr>
+		            <tr onmouseover="this.bgColor = '#ffffff';" onmouseout="this.bgColor = '#eefaee';" bgcolor="#eefaee">
+		                <td align="left"><a href="oneauthor.php?authorid=821775" target="_blank">开花不结果</a></td>
+		                <td align="left"><a href="onebook.php?novelid=3283072" target="_blank" rel="
+		                                               她是他的药。<br />标签：甜文 快穿 爽文                                                            " class="tooltip">大佬都爱我 [快穿]</a>
+		                </td>
+		                <td align="center">
+		                                               原创-言情-近代现代-爱情                                      </td>
+		            	<td align="center">轻松                                        </td>
+		                <td align="center">
+		                                               连载中                                        </td>
+		                <td align="right">564346</td>
+		                <td align="right">1039372096</td>
+		                <td align="center">2017-07-28 17:17:49</td>
+					</tr>
+					其它的省略...
+		        </tbody>
+		    </table>
+	*/
 
-	body_utf8 := mahonia.NewDecoder("gb18030").ConvertString(string(body_gbk))
-	body := []byte(body_utf8)
+	defer resp.Body.Close()
+	bodyGBK, _ := ioutil.ReadAll(resp.Body)
+
+	bodyUTF8 := mahonia.NewDecoder("gb18030").ConvertString(string(bodyGBK))
+	body := []byte(bodyUTF8)
 
 	pipe := PipeItem{}
 	err := json.Unmarshal([]byte(`
@@ -306,7 +389,10 @@ func TestHtmlJingJiang(t *testing.T) {
 	}
 
 	v, _ := (pipe.PipeBytes(body, "html"))
+	fmt.Println(`=== [ TestHtmlJingJiang ] ===================================\`)
 	showjson(v)
+	fmt.Println(`=== [ TestHtmlJingJiang ] ===================================/`)
+	fmt.Println()
 }
 
 func TestBaiduLocal(t *testing.T) {
@@ -352,7 +438,10 @@ func TestBaiduLocal(t *testing.T) {
 	}
 
 	v, _ := (pipe.PipeBytes(body, "html"))
+	fmt.Println(`=== [ TestBaiduLocal ] ===================================\`)
 	showjson(v)
+	fmt.Println(`=== [ TestBaiduLocal ] ===================================/`)
+	fmt.Println()
 }
 
 func TestTTKBPaging(t *testing.T) {
@@ -360,7 +449,31 @@ func TestTTKBPaging(t *testing.T) {
 	req := gohttp.New()
 
 	resp, _ := req.Get("http://r.cnews.qq.com/getSubChannels").End()
-
+	/*
+	   {
+	     "ret": 0,
+	     "version": "156.8",
+	     "channellist": [
+	       {
+	         "chlid": "daily_timeline",
+	         "chlname": "快报",
+	         "recommend": 0,
+	         "order": 0,
+	         "interfaceType": "timeline"
+	       },
+	       {
+	         "chlid": "kb_video_news",
+	         "chlname": "视频",
+	         "recommend": 0,
+	         "order": 0,
+	         "rendtype": "video",
+	         "group": "推荐"
+	   	},
+	   	其它的省略...
+	     ],
+	     "function": "oldAction"
+	   }
+	*/
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 
@@ -376,7 +489,7 @@ func TestTTKBPaging(t *testing.T) {
 				"name": "child",
 				"selector": "chlid",
 				"type": "text",
-				"filter": "sprintf(http://r.cnews.qq.com/getSubNewsChlidInterest?devid=860046037899335&appver=25_areading_3.3.1&chlid=%s&qn-sig=b07fe23c165c858d38f32ba972f3ccc1&qn-rid=b3f1c889-8a27-402c-9339-f87a9333546c&page={0})"
+				"filter": "sprintf(http://r.cnews.qq.com/getSubNewsChlidInterest?chlid=%s&page={0})"
 			}
 		]
 	}`), &pipe)
@@ -387,5 +500,8 @@ func TestTTKBPaging(t *testing.T) {
 	}
 
 	v, _ := (pipe.PipeBytes(body, "json"))
+	fmt.Println(`=== [ TestTTKBPaging ] ===================================\`)
 	showjson(v)
+	fmt.Println(`=== [ TestTTKBPaging ] ===================================/`)
+	fmt.Println()
 }

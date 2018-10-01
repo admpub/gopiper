@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/admpub/regexp2"
 )
 
 func init() {
@@ -23,6 +25,7 @@ func init() {
 	RegisterFilter("intval", intval)
 	RegisterFilter("floatval", floatval)
 	RegisterFilter("hrefreplace", hrefreplace)
+	RegisterFilter("regexpreplace", regexpreplace)
 	RegisterFilter("wraphtml", wraphtml)
 	RegisterFilter("tosbc", tosbc)
 	RegisterFilter("unescape", unescape)
@@ -57,8 +60,9 @@ func ReplaceFilter(name string, fn FilterFunction) {
 }
 
 var (
-	filterExp     = regexp.MustCompile(`([a-zA-Z0-9\-_]+)(?:\(([\w\W]*?)\))?(\||$)`)
-	hrefFilterExp = regexp.MustCompile(`href(\s*)=(\s*)([\w\W]+?)"`)
+	filterExp      = regexp.MustCompile(`([a-zA-Z0-9\-_]+)(?:\(([\w\W]*?)\))?(\||$)`)
+	hrefFilterExp  = regexp.MustCompile(`href(?:\s*)=(?:\s*)(['"])?([^'" ]*)(['"])?`)
+	hrefFilterExp2 = regexp2.MustCompile(`href(?:\s*)=(?:\s*)(['"]?)([^'" ]*)\1`, regexp2.IgnoreCase)
 )
 
 func applyFilter(name string, src *reflect.Value, params *reflect.Value) (interface{}, error) {
@@ -97,6 +101,7 @@ func callFilter(src interface{}, value string) (interface{}, error) {
 	return src, nil
 }
 
+//preadd(prefix) => {prefix}{src}
 func preadd(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
@@ -110,6 +115,8 @@ func preadd(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	}
 	return params.String(), nil
 }
+
+//postadd(suffix) => {src}{suffix}
 func postadd(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
@@ -123,6 +130,7 @@ func postadd(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	}
 	return params.String(), nil
 }
+
 func _substr(src string, params *reflect.Value) string {
 	vt := strings.Split(params.String(), ",")
 	switch len(vt) {
@@ -136,6 +144,9 @@ func _substr(src string, params *reflect.Value) string {
 	}
 	return src
 }
+
+//substr(0,5) => src[0:5]
+//substr(5) => src[5:]
 func substr(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
@@ -149,8 +160,9 @@ func substr(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	}
 	return src.Interface(), nil
 }
+
 func _replace(src string, params *reflect.Value) string {
-	vt := strings.Split(params.String(), ",")
+	vt := SplitParams(params.String())
 	switch len(vt) {
 	case 1:
 		return strings.Replace(src, vt[0], "", -1)
@@ -162,6 +174,9 @@ func _replace(src string, params *reflect.Value) string {
 	}
 	return src
 }
+
+//replace(find,replace) => src=findaaa => replaceaaa
+//replace(find) => src=findaaa => aaa
 func replace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
@@ -175,6 +190,8 @@ func replace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	}
 	return src.Interface(), nil
 }
+
+//trim(;) => src=;a; => a
 func trim(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter trim nil params")
@@ -192,6 +209,7 @@ func trim(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return src.Interface(), nil
 }
 
+//trimspace => src=" \naaa\n " => "aaa"
 func trimspace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
@@ -207,6 +225,7 @@ func trimspace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return src.Interface(), nil
 }
 
+//split(:) => src="a:b" => [a,b]
 func split(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter split nil params")
@@ -235,6 +254,7 @@ func split(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return src.Interface(), nil
 }
 
+//join(:) => src=["a","b"] => a:b
 func join(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter split nil params")
@@ -254,6 +274,7 @@ func join(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return src.Interface(), nil
 }
 
+//intval => src="123" => 123
 func intval(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
@@ -271,6 +292,7 @@ func intval(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return 0, nil
 }
 
+//floatval => src="12.3" => 12.3
 func floatval(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
@@ -288,26 +310,101 @@ func floatval(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return 0.0, nil
 }
 
+//hrefreplace(data-url="$2") => src=`href="http://www.admpub.com"` => data-url="http://www.admpub.com"
 func hrefreplace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
-		return hrefFilterExp.ReplaceAllString(src.String(), params.String()), nil
+		return hrefFilterExp2.Replace(src.String(), params.String(), 0, -1)
+		//return hrefFilterExp.ReplaceAllString(src.String(), params.String()), nil
 
 	case []string:
 		vt, _ := src.Interface().([]string)
 		for i := 0; i < len(vt); i++ {
-			vt[i] = hrefFilterExp.ReplaceAllString(vt[i], params.String())
+			vt[i], _ = hrefFilterExp2.Replace(src.String(), params.String(), 0, -1)
+			//vt[i] = hrefFilterExp.ReplaceAllString(vt[i], params.String())
 		}
 		return vt, nil
 	}
 	return src.Interface(), nil
 }
 
+func SplitParams(params string, separators ...string) []string {
+	separator := `,`
+	if len(separators) > 0 {
+		separator = separators[0]
+		if len(separator) < 1 {
+			return strings.Split(params, separator)
+		}
+		if len(separator) > 1 {
+			separator = separator[0:1]
+		}
+	}
+	vt := strings.Split(params, separator)
+	var (
+		lastEnd string
+		results []string
+	)
+	for k, v := range vt {
+		lastKey := k - 1
+		if lastEnd == `\` {
+			lastVal := vt[lastKey]
+			vt[lastKey] = lastVal[0:len(lastVal)-1] + separator + v
+			resultLen := len(results)
+			if resultLen > 0 {
+				results[resultLen-1] = vt[lastKey]
+			}
+			lastEnd = v[len(v)-1:]
+			continue
+		}
+		lastEnd = v[len(v)-1:]
+		results = append(results, v)
+	}
+	return results
+}
+
+//regexpreplace(^1) => src="1233" => "233"
+//regexpreplace(^1,2) => src="1233" => "2233"
 func regexpreplace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+	vt := SplitParams(params.String())
+	var (
+		expr    string
+		repl    string
+		startAt int
+		count   = -1
+	)
+	switch len(vt) {
+	case 4:
+		count, _ = strconv.Atoi(vt[3])
+		fallthrough
+	case 3:
+		startAt, _ = strconv.Atoi(vt[2])
+		fallthrough
+	case 2:
+		repl = vt[1]
+		fallthrough
+	case 1:
+		expr = vt[0]
+	}
+	re, err := regexp2.Compile(expr, 0)
+	if err != nil {
+		return src.Interface(), err
+	}
+	switch src.Interface().(type) {
+	case string:
+		return re.Replace(src.String(), repl, startAt, count)
+
+	case []string:
+		vt, _ := src.Interface().([]string)
+		for i := 0; i < len(vt); i++ {
+			vt[i], _ = re.Replace(src.String(), repl, startAt, count)
+		}
+		return vt, nil
+	}
 	return src.Interface(), nil
 }
 
-func _tosbc(src string, params *reflect.Value) string {
+// 将全角的标点符合和英文字母转换为半角
+func _tosbc(src string) string {
 	var res string
 	for _, t := range src {
 		if t == 12288 {
@@ -320,21 +417,23 @@ func _tosbc(src string, params *reflect.Value) string {
 	return res
 }
 
+// tosbc => src="1～2" => "1~2"
 func tosbc(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
-		return _tosbc(src.String(), params), nil
+		return _tosbc(src.String()), nil
 
 	case []string:
 		vt, _ := src.Interface().([]string)
 		for i := 0; i < len(vt); i++ {
-			vt[i] = _tosbc(vt[i], params)
+			vt[i] = _tosbc(vt[i])
 		}
 		return vt, nil
 	}
 	return src.Interface(), nil
 }
 
+// unescape => src="&lt;" => "<"
 func unescape(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
@@ -350,6 +449,7 @@ func unescape(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return src.Interface(), nil
 }
 
+//escape => src="<" => "&lt;"
 func escape(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
@@ -365,6 +465,7 @@ func escape(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return src.Interface(), nil
 }
 
+//wraphtml(a) => <a>{src}</a>
 func wraphtml(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter wraphtml nil params")
@@ -384,6 +485,7 @@ func wraphtml(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return src.Interface(), nil
 }
 
+//sprintf_multi_param(%veee%v) src=[1,2] => 1eee2
 func sprintf_multi_param(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter split nil params ")
@@ -403,6 +505,8 @@ func sprintf_multi_param(src *reflect.Value, params *reflect.Value) (interface{}
 
 	return fmt.Sprintf(params.String(), src.Interface()), nil
 }
+
+//sprintf(%s) src=a => a
 func sprintf(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter split nil params")
@@ -423,6 +527,8 @@ func sprintf(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 
 	return fmt.Sprintf(params.String(), src.Interface()), nil
 }
+
+//sprintfmap(%v-%v,a,b) src={"a":1,"b":2} => "1-2"
 func sprintfmap(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter split nil params")
@@ -431,7 +537,7 @@ func sprintfmap(src *reflect.Value, params *reflect.Value) (interface{}, error) 
 	if ok == false {
 		return src.Interface(), errors.New("value is not map[string]interface{}")
 	}
-	vt := strings.Split(params.String(), ",")
+	vt := SplitParams(params.String())
 	if len(vt) <= 1 {
 		return src.Interface(), errors.New("params length must > 1")
 	}
@@ -439,19 +545,25 @@ func sprintfmap(src *reflect.Value, params *reflect.Value) (interface{}, error) 
 	for _, x := range vt[1:] {
 		if vm, ok := msrc[x]; ok {
 			pArray = append(pArray, vm)
+		} else {
+			pArray = append(pArray, nil)
 		}
 	}
 	return fmt.Sprintf(vt[0], pArray...), nil
 }
 
+//unixtime 时间戳(总秒数)
 func unixtime(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return time.Now().Unix(), nil
 }
 
+//unixmill 时间戳(总微秒数)
 func unixmill(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return time.Now().UnixNano() / int64(time.Millisecond), nil
 }
 
+//paging(startAt,endAt,step)
+//paging(1,10) / paging(1,10,2)
 func paging(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter paging nil params")
@@ -466,6 +578,9 @@ func paging(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	}
 
 	start, err := strconv.Atoi(vt[0])
+	if err != nil {
+		return src.Interface(), errors.New("params type error:need int." + err.Error())
+	}
 	end, err := strconv.Atoi(vt[1])
 	if err != nil {
 		return src.Interface(), errors.New("params type error:need int." + err.Error())
@@ -535,6 +650,7 @@ func sprintf_replace(src string, param []string) string {
 	return src
 }
 
+//quote => src=`a` => `"a"`
 func quote(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 
 	switch src.Interface().(type) {
@@ -551,6 +667,7 @@ func quote(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return src.Interface(), nil
 }
 
+//unquote => src=`"a"` => `a`
 func unquote(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 
 	switch src.Interface().(type) {

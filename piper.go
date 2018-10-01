@@ -60,6 +60,16 @@ var (
 	jsonNumberIndexExp = regexp.MustCompile(`^\[(\d+)\]$`)
 )
 
+// VerifySelector 验证正则表达式
+func VerifySelector(selector string) (err error) {
+	if strings.HasPrefix(selector, REGEXP_PRE) {
+		_, err = regexp.Compile(strings.TrimPrefix(selector, REGEXP_PRE))
+	} else if strings.HasPrefix(selector, REGEXP2_PRE) {
+		_, err = regexp2.Compile(strings.TrimPrefix(selector, REGEXP2_PRE), 0)
+	}
+	return
+}
+
 type PipeItem struct {
 	Name     string     `json:"name,omitempty"`
 	Selector string     `json:"selector,omitempty"`
@@ -211,7 +221,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		return nil, errors.New("Selector can't Find node!: " + selector)
 	}
 
-	if attrExp.MatchString(p.Type) {
+	if attrExp.MatchString(p.Type) { // 例如：attr[href] 或 attr[src] 等
 		vt := attrExp.FindStringSubmatch(p.Type)
 		res, has := sel.Attr(vt[1])
 		if !has {
@@ -219,7 +229,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		}
 		return callFilter(res, p.Filter)
 	}
-	if attrArrayExp.MatchString(p.Type) {
+	if attrArrayExp.MatchString(p.Type) { // 例如：attr-array[href] 或 attr-array[src] 等
 		vt := attrArrayExp.FindStringSubmatch(p.Type)
 		res := make([]string, 0)
 		sel.Each(func(index int, child *goquery.Selection) {
