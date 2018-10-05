@@ -54,9 +54,9 @@ func NewFilter(name string, fn FilterFunction, description, usage, example strin
 type Filter struct {
 	Name        string
 	function    FilterFunction
-	Description string
-	Usage       string
-	Example     string
+	Description string `json:",omitempty"`
+	Usage       string `json:",omitempty"`
+	Example     string `json:",omitempty"`
 }
 
 var filters = make(map[string]*Filter)
