@@ -77,6 +77,10 @@ func ReplaceFilter(name string, fn FilterFunction, description, usage, example s
 	filters[name] = NewFilter(name, fn, description, usage, example)
 }
 
+func AllFilter() map[string]*Filter {
+	return filters
+}
+
 var (
 	filterExp      = regexp.MustCompile(`([a-zA-Z0-9\-_]+)(?:\(([\w\W]*?)\))?(\||$)`)
 	hrefFilterExp  = regexp.MustCompile(`href(?:\s*)=(?:\s*)(['"])?([^'" ]*)(['"])?`)
