@@ -44,7 +44,7 @@ type FilterFunction func(src *reflect.Value, params *reflect.Value) (interface{}
 func NewFilter(name string, fn FilterFunction, description, usage string) *Filter {
 	return &Filter{
 		Name:        name,
-		Function:    fn,
+		function:    fn,
 		Description: description,
 		Usage:       usage,
 	}
@@ -52,7 +52,7 @@ func NewFilter(name string, fn FilterFunction, description, usage string) *Filte
 
 type Filter struct {
 	Name        string
-	Function    FilterFunction
+	function    FilterFunction
 	Description string
 	Usage       string
 }
@@ -86,7 +86,7 @@ func applyFilter(name string, src *reflect.Value, params *reflect.Value) (interf
 	if !existing {
 		return nil, fmt.Errorf("Filter with name '%s' not found.", name)
 	}
-	return filter.Function(src, params)
+	return filter.function(src, params)
 }
 
 func callFilter(src interface{}, value string) (interface{}, error) {
