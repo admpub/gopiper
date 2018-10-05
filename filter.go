@@ -14,49 +14,65 @@ import (
 )
 
 func init() {
-	RegisterFilter("preadd", preadd)
-	RegisterFilter("postadd", postadd)
-	RegisterFilter("replace", replace)
-	RegisterFilter("split", split)
-	RegisterFilter("join", join)
-	RegisterFilter("trim", trim)
-	RegisterFilter("trimspace", trimspace)
-	RegisterFilter("substr", substr)
-	RegisterFilter("intval", intval)
-	RegisterFilter("floatval", floatval)
-	RegisterFilter("hrefreplace", hrefreplace)
-	RegisterFilter("regexpreplace", regexpreplace)
-	RegisterFilter("wraphtml", wraphtml)
-	RegisterFilter("tosbc", tosbc)
-	RegisterFilter("unescape", unescape)
-	RegisterFilter("escape", escape)
-	RegisterFilter("sprintf", sprintf)
-	RegisterFilter("sprintfmap", sprintfmap)
-	RegisterFilter("unixtime", unixtime)
-	RegisterFilter("unixmill", unixmill)
-	RegisterFilter("paging", paging)
-	RegisterFilter("quote", quote)
-	RegisterFilter("unquote", unquote)
+	RegisterFilter("preadd", preadd, "添加前缀", `preadd(prefix)`)
+	RegisterFilter("postadd", postadd, "添加后缀", `postadd(suffix)`)
+	RegisterFilter("replace", replace, "替换", `replace(find,replace)`)
+	RegisterFilter("split", split, "分割", `split`)
+	RegisterFilter("join", join, "合并", `join`)
+	RegisterFilter("trim", trim, "剪掉头尾字符", `trim(;)`)
+	RegisterFilter("trimspace", trimspace, "剪掉头尾空白", `trimspace`)
+	RegisterFilter("substr", substr, "获取子字符串", `substr(0,5)`)
+	RegisterFilter("intval", intval, "转换为整数", `intval`)
+	RegisterFilter("floatval", floatval, "转换为小数", `floatval`)
+	RegisterFilter("hrefreplace", hrefreplace, "替换href属性", `hrefreplace(data-url="$2")`)
+	RegisterFilter("regexpreplace", regexpreplace, "正则替换", `regexpreplace(^A$,B)`)
+	RegisterFilter("wraphtml", wraphtml, "用HTML标签包裹", `wraphtml(a)`)
+	RegisterFilter("tosbc", tosbc, "将全角的标点符号和英文字母转换为半角", `tosbc`)
+	RegisterFilter("unescape", unescape, "解码HTML", `unescape`)
+	RegisterFilter("escape", escape, "编码HTML", `escape`)
+	RegisterFilter("sprintf", sprintf, "格式化", `sprintf(%s)`)
+	RegisterFilter("sprintfmap", sprintfmap, "用map值格式化", `sprintfmap(%v-%v,a,b)`)
+	RegisterFilter("unixtime", unixtime, "UNIX时间戳(秒数)", `unixtime`)
+	RegisterFilter("unixmill", unixmill, "UNIX时间戳(微秒数)", `unixmill`)
+	RegisterFilter("paging", paging, "分页", `paging(1,10,1)`)
+	RegisterFilter("quote", quote, "用双引号包起来", `quote`)
+	RegisterFilter("unquote", unquote, "取消双引号包裹", `unquote`)
 }
 
 type FilterFunction func(src *reflect.Value, params *reflect.Value) (interface{}, error)
 
-var filters = make(map[string]FilterFunction)
+func NewFilter(name string, fn FilterFunction, description, usage string) *Filter {
+	return &Filter{
+		Name:        name,
+		Function:    fn,
+		Description: description,
+		Usage:       usage,
+	}
+}
 
-func RegisterFilter(name string, fn FilterFunction) {
+type Filter struct {
+	Name        string
+	Function    FilterFunction
+	Description string
+	Usage       string
+}
+
+var filters = make(map[string]*Filter)
+
+func RegisterFilter(name string, fn FilterFunction, description, usage string) {
 	_, existing := filters[name]
 	if existing {
 		panic(fmt.Sprintf("Filter with name '%s' is already registered.", name))
 	}
-	filters[name] = fn
+	filters[name] = NewFilter(name, fn, description, usage)
 }
 
-func ReplaceFilter(name string, fn FilterFunction) {
+func ReplaceFilter(name string, fn FilterFunction, description, usage string) {
 	_, existing := filters[name]
 	if !existing {
 		panic(fmt.Sprintf("Filter with name '%s' does not exist (therefore cannot be overridden).", name))
 	}
-	filters[name] = fn
+	filters[name] = NewFilter(name, fn, description, usage)
 }
 
 var (
@@ -66,11 +82,11 @@ var (
 )
 
 func applyFilter(name string, src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	fn, existing := filters[name]
+	filter, existing := filters[name]
 	if !existing {
 		return nil, fmt.Errorf("Filter with name '%s' not found.", name)
 	}
-	return fn(src, params)
+	return filter.Function(src, params)
 }
 
 func callFilter(src interface{}, value string) (interface{}, error) {
@@ -403,7 +419,7 @@ func regexpreplace(src *reflect.Value, params *reflect.Value) (interface{}, erro
 	return src.Interface(), nil
 }
 
-// 将全角的标点符合和英文字母转换为半角
+// 将全角的标点符号和英文字母转换为半角
 func _tosbc(src string) string {
 	var res string
 	for _, t := range src {
