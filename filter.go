@@ -21,7 +21,7 @@ func init() {
 	RegisterFilter("join", join, "合并数组为字符串", `join(-)`, ``)
 	RegisterFilter("trim", trim, "剪掉头尾指定字符", `trim(;)`, ``)
 	RegisterFilter("trimspace", trimspace, "剪掉头尾空白", `trimspace`, ``)
-	RegisterFilter("substr", substr, "获取子字符串。字符串总是从左向右从0开始编号，参数1为要截取的起始位置编号，参数2为要截取的终止位置编号，截取子字符串时，总是包含起始编号的字符，不包含终止编号的字符", `substr(0,5)`, ``)
+	RegisterFilter("substr", substr, "获取子字符串。字符串总是从左向右从0开始编号，参数1和参数2分别用来指定要截取的起止位置编号，截取子字符串时，总是包含起始编号的字符，不包含终止编号的字符", `substr(0,5)`, ``)
 	RegisterFilter("intval", intval, "转换为整数", `intval`, ``)
 	RegisterFilter("floatval", floatval, "转换为小数", `floatval`, ``)
 	RegisterFilter("hrefreplace", hrefreplace, "替换href属性。$2为捕获到的href属性值", `hrefreplace(data-url="$2")`, ``)
