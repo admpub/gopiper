@@ -38,7 +38,7 @@ func init() {
 	RegisterFilter("paging", paging, "分页。参数1为起始页码，参数2为终止页码，参数3为步进值(可选)", `paging(1,10,1)`, ``)
 	RegisterFilter("quote", quote, "用双引号包起来", `quote`, ``)
 	RegisterFilter("unquote", unquote, "取消双引号包围", `unquote`, ``)
-	RegisterFilter("download", download, "下载文件到指定位置", `download(savePath)`, ``)
+	RegisterFilter("saveto", saveto, "下载并保存文件到指定位置", `saveto(savePath)`, ``)
 	RegisterFilter("fetch", fetch, "抓取网址内容", `fetch(pageType,selector)`, ``)
 }
 
@@ -200,8 +200,8 @@ func fetch(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface
 	return params.String(), nil
 }
 
-//download(savePath)
-func download(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
+//saveto(savePath)
+func saveto(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if pipe.storer == nil || pipe.fetcher == nil {
 		return nil, nil
 	}
