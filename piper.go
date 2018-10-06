@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"regexp"
 	"strconv"
 	"strings"
@@ -71,12 +72,18 @@ func VerifySelector(selector string) (err error) {
 }
 
 type PipeItem struct {
-	Name     string     `json:"name,omitempty"`
+	Name     string     `json:"name,omitempty"` //只有类型为map的时候才会用到
 	Selector string     `json:"selector,omitempty"`
 	Type     string     `json:"type"`
 	Filter   string     `json:"filter,omitempty"`
 	SubItem  []PipeItem `json:"subitem,omitempty"`
+	fetcher  Fether
+	storer   Storer
+	pageType string
 }
+
+type Fether func(pageURL string) (body io.Reader, err error)
+type Storer func(reader io.Reader, savePath string) (newPath string, err error)
 
 type htmlselector struct {
 	*goquery.Selection
@@ -84,8 +91,25 @@ type htmlselector struct {
 	selector string
 }
 
-func (p *PipeItem) PipeBytes(body []byte, pagetype string) (interface{}, error) {
-	switch pagetype {
+func (p *PipeItem) SetFetcher(fetcher Fether) {
+	p.fetcher = fetcher
+}
+
+func (p *PipeItem) SetStorer(storer Storer) {
+	p.storer = storer
+}
+
+func (p *PipeItem) Fetcher() Fether {
+	return p.fetcher
+}
+
+func (p *PipeItem) Storer() Storer {
+	return p.storer
+}
+
+func (p *PipeItem) PipeBytes(body []byte, pageType string) (interface{}, error) {
+	p.pageType = pageType
+	switch pageType {
 	case PAGE_HTML:
 		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
 		if err != nil {
@@ -146,17 +170,17 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 		if err != nil {
 			return nil, err
 		}
-		return callFilter(val, p.Filter)
+		return callFilter(p, val, p.Filter)
 	case PT_INT_ARRAY, PT_FLOAT_ARRAY, PT_BOOL_ARRAY:
 		val, err := parseTextValue(sv, p.Type)
 		if err != nil {
 			return nil, err
 		}
-		return callFilter(val, p.Filter)
+		return callFilter(p, val, p.Filter)
 	case PT_TEXT, PT_STRING:
-		return callFilter(rs, p.Filter)
+		return callFilter(p, rs, p.Filter)
 	case PT_TEXT_ARRAY, PT_STRING_ARRAY:
-		return callFilter(sv, p.Filter)
+		return callFilter(p, sv, p.Filter)
 	case PT_JSON_PARSE:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, errors.New("Pipe type jsonparse need one subItem!")
@@ -170,25 +194,25 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 		if err != nil {
 			return nil, err
 		}
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	case PT_JSON_VALUE:
 		res, err := text2json(rs)
 		if err != nil {
 			return nil, err
 		}
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	case PT_MAP:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, errors.New("Pipe type array need one subItem!")
 		}
 		res := make(map[string]interface{})
 		for _, subitem := range p.SubItem {
-			if subitem.Name == "" {
+			if len(subitem.Name) == 0 {
 				continue
 			}
 			res[subitem.Name], _ = subitem.pipeText([]byte(rs))
 		}
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	}
 	return nil, errors.New("Not support pipe type")
 }
@@ -227,7 +251,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		if !has {
 			return nil, errors.New("Can't Find attribute: " + p.Type + " selector: " + selector)
 		}
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	}
 	if attrArrayExp.MatchString(p.Type) { // 例如：attr-array[href] 或 attr-array[src] 等
 		vt := attrArrayExp.FindStringSubmatch(p.Type)
@@ -238,7 +262,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 				res = append(res, href)
 			}
 		})
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	}
 
 	switch p.Type {
@@ -247,33 +271,33 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return callFilter(val, p.Filter)
+		return callFilter(p, val, p.Filter)
 	case PT_HTML:
 		var html string
 		sel.Each(func(idx int, s1 *goquery.Selection) {
 			str, _ := s1.Html()
 			html += str
 		})
-		return callFilter(html, p.Filter)
+		return callFilter(p, html, p.Filter)
 	case PT_OUT_HTML:
 		var html string
 		sel.Each(func(idx int, s1 *goquery.Selection) {
 			str, _ := goquery.OuterHtml(s1)
 			html += str
 		})
-		return callFilter(html, p.Filter)
+		return callFilter(p, html, p.Filter)
 	case PT_HREF, PT_IMG_SRC, PT_IMG_ALT:
 		res, has := sel.Attr(p.Type)
 		if !has {
 			return nil, errors.New("Can't Find attribute: " + p.Type + " selector: " + selector)
 		}
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	case PT_TEXT_ARRAY:
 		res := make([]string, 0)
 		sel.Each(func(index int, child *goquery.Selection) {
 			res = append(res, child.Text())
 		})
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	case PT_HREF_ARRAY:
 		res := make([]string, 0)
 		sel.Each(func(index int, child *goquery.Selection) {
@@ -282,7 +306,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 				res = append(res, href)
 			}
 		})
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	case PT_ARRAY:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, errors.New("Pipe type array need one subItem!")
@@ -293,22 +317,22 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 			v, _ := arrayItem.pipeSelection(child)
 			res = append(res, v)
 		})
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	case PT_MAP:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, errors.New("Pipe type array need one subItem!")
 		}
 		res := make(map[string]interface{})
 		for _, subitem := range p.SubItem {
-			if subitem.Name == "" {
+			if len(subitem.Name) == 0 {
 				continue
 			}
 			res[subitem.Name], _ = subitem.pipeSelection(sel.Selection)
 		}
 
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	default:
-		return callFilter(0, p.Filter)
+		return callFilter(p, 0, p.Filter)
 	}
 
 	return nil, errors.New("Not support pipe type")
@@ -564,21 +588,21 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 
 	switch p.Type {
 	case PT_INT:
-		return callFilter(js.MustInt64(0), p.Filter)
+		return callFilter(p, js.MustInt64(0), p.Filter)
 	case PT_FLOAT:
-		return callFilter(js.MustFloat64(0.0), p.Filter)
+		return callFilter(p, js.MustFloat64(0.0), p.Filter)
 	case PT_BOOL:
-		return callFilter(js.MustBool(false), p.Filter)
+		return callFilter(p, js.MustBool(false), p.Filter)
 	case PT_TEXT, PT_STRING:
-		return callFilter(js.MustString(""), p.Filter)
+		return callFilter(p, js.MustString(""), p.Filter)
 	case PT_TEXT_ARRAY, PT_STRING_ARRAY:
 		v, err := js.StringArray()
 		if err != nil {
 			return nil, err
 		}
-		return callFilter(v, p.Filter)
+		return callFilter(p, v, p.Filter)
 	case PT_JSON_VALUE:
-		return callFilter(js.Interface(), p.Filter)
+		return callFilter(p, js.Interface(), p.Filter)
 	case PT_JSON_PARSE:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, errors.New("Pipe type jsonparse need one subItem!")
@@ -596,7 +620,7 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	case PT_ARRAY:
 		v, err := js.Array()
 		if err != nil {
@@ -613,7 +637,7 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 			vl, _ := arrayItem.pipeJson(data)
 			res = append(res, vl)
 		}
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	case PT_MAP:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, errors.New("Pipe type array need one subItem!")
@@ -621,15 +645,15 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 		data, _ := json.Marshal(js)
 		res := make(map[string]interface{})
 		for _, subitem := range p.SubItem {
-			if subitem.Name == "" {
+			if len(subitem.Name) == 0 {
 				continue
 			}
 			res[subitem.Name], _ = subitem.pipeJson(data)
 		}
 
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	default:
-		return callFilter(0, p.Filter)
+		return callFilter(p, 0, p.Filter)
 	}
 
 	return nil, nil
@@ -650,9 +674,9 @@ func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return callFilter(val, p.Filter)
+		return callFilter(p, val, p.Filter)
 	case PT_TEXT, PT_STRING:
-		return callFilter(bodyStr, p.Filter)
+		return callFilter(p, bodyStr, p.Filter)
 	case PT_JSON_PARSE:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, errors.New("Pipe type jsonparse need one subItem!")
@@ -666,13 +690,13 @@ func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	case PT_JSON_VALUE:
 		res, err := text2json(string(body))
 		if err != nil {
 			return nil, err
 		}
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	case PT_MAP:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, errors.New("Pipe type array need one subItem!")
@@ -684,9 +708,9 @@ func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 			}
 			res[subitem.Name], _ = subitem.pipeText(body)
 		}
-		return callFilter(res, p.Filter)
+		return callFilter(p, res, p.Filter)
 	default:
-		return callFilter(0, p.Filter)
+		return callFilter(p, 0, p.Filter)
 	}
 
 	return nil, errors.New("Not support pipe type")

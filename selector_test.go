@@ -223,7 +223,7 @@ func TestHtmlDouban(t *testing.T) {
 }
 `)
 
-	log.Println(callFilter("美团他|女神||", `preadd(AAAA)|split(|)|join(,)`))
+	log.Println(callFilter(nil, "美团他|女神||", `preadd(AAAA)|split(|)|join(,)`))
 	if val, err := test_piper("http://movie.douban.com/subject/25850640/", "html", pb); err != nil {
 		t.Fatal(err)
 	} else {

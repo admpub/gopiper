@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"io/ioutil"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -37,9 +38,11 @@ func init() {
 	RegisterFilter("paging", paging, "分页。参数1为起始页码，参数2为终止页码，参数3为步进值(可选)", `paging(1,10,1)`, ``)
 	RegisterFilter("quote", quote, "用双引号包起来", `quote`, ``)
 	RegisterFilter("unquote", unquote, "取消双引号包围", `unquote`, ``)
+	RegisterFilter("download", download, "下载文件到指定位置", `download(savePath)`, ``)
+	RegisterFilter("fetch", fetch, "抓取网址内容", `fetch(pageType,selector)`, ``)
 }
 
-type FilterFunction func(src *reflect.Value, params *reflect.Value) (interface{}, error)
+type FilterFunction func(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error)
 
 func NewFilter(name string, fn FilterFunction, description, usage, example string) *Filter {
 	return &Filter{
@@ -87,15 +90,15 @@ var (
 	hrefFilterExp2 = regexp2.MustCompile(`href(?:\s*)=(?:\s*)(['"]?)([^'" ]*)\1`, regexp2.IgnoreCase)
 )
 
-func applyFilter(name string, src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func applyFilter(pipe *PipeItem, name string, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	filter, existing := filters[name]
 	if !existing {
 		return nil, fmt.Errorf("Filter with name '%s' not found.", name)
 	}
-	return filter.function(src, params)
+	return filter.function(pipe, src, params)
 }
 
-func callFilter(src interface{}, value string) (interface{}, error) {
+func callFilter(pipe *PipeItem, src interface{}, value string) (interface{}, error) {
 
 	if src == nil || len(value) == 0 {
 		return src, nil
@@ -112,7 +115,7 @@ func callFilter(src interface{}, value string) (interface{}, error) {
 
 		srcValue := reflect.ValueOf(src)
 		paramValue := reflect.ValueOf(params)
-		next, err := applyFilter(name, &srcValue, &paramValue)
+		next, err := applyFilter(pipe, name, &srcValue, &paramValue)
 		if err != nil {
 			continue
 		}
@@ -123,8 +126,114 @@ func callFilter(src interface{}, value string) (interface{}, error) {
 	return src, nil
 }
 
+//fetch(pageType,selector)
+func fetch(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
+	if pipe.fetcher == nil {
+		return nil, nil
+	}
+	var (
+		pageType = pipe.pageType
+		selector string
+	)
+	paramList := SplitParams(params.String(), `,`)
+	switch len(paramList) {
+	case 2:
+		selector = paramList[1]
+		fallthrough
+	case 1:
+		pageType = paramList[0]
+	}
+	switch src.Interface().(type) {
+	case string:
+		reader, err := pipe.fetcher(src.String())
+		if err != nil {
+			return nil, err
+		}
+		body, err := ioutil.ReadAll(reader)
+		if err != nil {
+			return nil, err
+		}
+		if len(selector) == 0 {
+			return string(body), nil
+		}
+		pipe2 := &PipeItem{
+			Name:     ``,
+			Selector: selector,
+			Type:     PT_STRING,
+			Filter:   ``,
+		}
+		return pipe2.PipeBytes(body, pageType)
+	case []string:
+		vt, _ := src.Interface().([]string)
+		for i := 0; i < len(vt); i++ {
+			reader, err := pipe.fetcher(vt[i])
+			if err != nil {
+				vt[i] = err.Error()
+				continue
+			}
+			body, err := ioutil.ReadAll(reader)
+			if err != nil {
+				return nil, err
+			}
+			if len(selector) == 0 {
+				return string(body), nil
+			}
+			if len(selector) == 0 {
+				vt[i] = string(body)
+				continue
+			}
+			pipe2 := &PipeItem{
+				Name:     ``,
+				Selector: selector,
+				Type:     PT_STRING,
+				Filter:   ``,
+			}
+			res, err := pipe2.PipeBytes(body, pageType)
+			if err != nil {
+				vt[i] = err.Error()
+				continue
+			}
+			vt[i] = res.(string)
+		}
+		return vt, nil
+	}
+	return params.String(), nil
+}
+
+//download(savePath)
+func download(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
+	if pipe.storer == nil || pipe.fetcher == nil {
+		return nil, nil
+	}
+	switch src.Interface().(type) {
+	case string:
+		reader, err := pipe.fetcher(src.String())
+		if err != nil {
+			return nil, err
+		}
+		return pipe.storer(reader, params.String())
+	case []string:
+		vt, _ := src.Interface().([]string)
+		for i := 0; i < len(vt); i++ {
+			reader, err := pipe.fetcher(vt[i])
+			if err != nil {
+				vt[i] = err.Error()
+				continue
+			}
+			newPath, err := pipe.storer(reader, params.String())
+			if err != nil {
+				vt[i] = err.Error()
+				continue
+			}
+			vt[i] = newPath
+		}
+		return vt, nil
+	}
+	return params.String(), nil
+}
+
 //preadd(prefix) => {prefix}{src}
-func preadd(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func preadd(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
 		return params.String() + src.String(), nil
@@ -139,7 +248,7 @@ func preadd(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 //postadd(suffix) => {src}{suffix}
-func postadd(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func postadd(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
 		return src.String() + params.String(), nil
@@ -169,7 +278,7 @@ func _substr(src string, params *reflect.Value) string {
 
 //substr(0,5) => src[0:5]
 //substr(5) => src[5:]
-func substr(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func substr(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
 		return _substr(src.String(), params), nil
@@ -199,7 +308,7 @@ func _replace(src string, params *reflect.Value) string {
 
 //replace(find,replace) => src=findaaa => replaceaaa
 //replace(find) => src=findaaa => aaa
-func replace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func replace(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
 		return _replace(src.String(), params), nil
@@ -214,7 +323,7 @@ func replace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 //trim(;) => src=;a; => a
-func trim(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func trim(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter trim nil params")
 	}
@@ -232,7 +341,7 @@ func trim(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 //trimspace => src=" \naaa\n " => "aaa"
-func trimspace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func trimspace(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
 		return strings.TrimSpace(src.String()), nil
@@ -248,7 +357,7 @@ func trimspace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 //split(:) => src="a:b" => [a,b]
-func split(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func split(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter split nil params")
 	}
@@ -277,7 +386,7 @@ func split(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 //join(:) => src=["a","b"] => a:b
-func join(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func join(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter split nil params")
 	}
@@ -297,7 +406,7 @@ func join(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 //intval => src="123" => 123
-func intval(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func intval(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
 		return strconv.Atoi(src.String())
@@ -315,7 +424,7 @@ func intval(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 //floatval => src="12.3" => 12.3
-func floatval(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func floatval(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
 		return strconv.ParseFloat(src.String(), 64)
@@ -333,7 +442,7 @@ func floatval(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 //hrefreplace(data-url="$2") => src=`href="http://www.admpub.com"` => data-url="http://www.admpub.com"
-func hrefreplace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func hrefreplace(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
 		return hrefFilterExp2.Replace(src.String(), params.String(), 0, -1)
@@ -351,6 +460,9 @@ func hrefreplace(src *reflect.Value, params *reflect.Value) (interface{}, error)
 }
 
 func SplitParams(params string, separators ...string) []string {
+	if len(params) == 0 {
+		return []string{}
+	}
 	separator := `,`
 	if len(separators) > 0 {
 		separator = separators[0]
@@ -386,7 +498,7 @@ func SplitParams(params string, separators ...string) []string {
 
 //regexpreplace(^1) => src="1233" => "233"
 //regexpreplace(^1,2) => src="1233" => "2233"
-func regexpreplace(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func regexpreplace(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	vt := SplitParams(params.String())
 	var (
 		expr    string
@@ -440,7 +552,7 @@ func _tosbc(src string) string {
 }
 
 // tosbc => src="1～2" => "1~2"
-func tosbc(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func tosbc(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
 		return _tosbc(src.String()), nil
@@ -456,7 +568,7 @@ func tosbc(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 // unescape => src="&lt;" => "<"
-func unescape(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func unescape(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
 		return html.UnescapeString(src.String()), nil
@@ -472,7 +584,7 @@ func unescape(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 //escape => src="<" => "&lt;"
-func escape(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func escape(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	switch src.Interface().(type) {
 	case string:
 		return html.EscapeString(src.String()), nil
@@ -488,7 +600,7 @@ func escape(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 //wraphtml(a) => <a>{src}</a>
-func wraphtml(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func wraphtml(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter wraphtml nil params")
 	}
@@ -508,7 +620,7 @@ func wraphtml(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 //sprintf_multi_param(%veee%v) src=[1,2] => 1eee2
-func sprintf_multi_param(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func sprintf_multi_param(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter split nil params ")
 	}
@@ -529,7 +641,7 @@ func sprintf_multi_param(src *reflect.Value, params *reflect.Value) (interface{}
 }
 
 //sprintf(%s) src=a => a
-func sprintf(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func sprintf(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter split nil params")
 	}
@@ -551,7 +663,7 @@ func sprintf(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 //sprintfmap(%v-%v,a,b) src={"a":1,"b":2} => "1-2"
-func sprintfmap(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func sprintfmap(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter split nil params")
 	}
@@ -575,18 +687,18 @@ func sprintfmap(src *reflect.Value, params *reflect.Value) (interface{}, error) 
 }
 
 //unixtime 时间戳(总秒数)
-func unixtime(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func unixtime(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return time.Now().Unix(), nil
 }
 
 //unixmill 时间戳(总毫秒数)
-func unixmill(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func unixmill(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return time.Now().UnixNano() / int64(time.Millisecond), nil
 }
 
 //paging(startAt,endAt,step)
 //paging(1,10) / paging(1,10,2)
-func paging(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func paging(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
 		return src.Interface(), errors.New("filter paging nil params")
 	}
@@ -673,7 +785,7 @@ func sprintf_replace(src string, param []string) string {
 }
 
 //quote => src=`a` => `"a"`
-func quote(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func quote(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 
 	switch src.Interface().(type) {
 	case string:
@@ -690,7 +802,7 @@ func quote(src *reflect.Value, params *reflect.Value) (interface{}, error) {
 }
 
 //unquote => src=`"a"` => `a`
-func unquote(src *reflect.Value, params *reflect.Value) (interface{}, error) {
+func unquote(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 
 	switch src.Interface().(type) {
 	case string:
