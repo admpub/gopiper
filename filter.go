@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"html"
-	"io/ioutil"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -145,11 +144,7 @@ func fetch(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface
 	}
 	switch src.Interface().(type) {
 	case string:
-		reader, err := pipe.fetcher(src.String())
-		if err != nil {
-			return nil, err
-		}
-		body, err := ioutil.ReadAll(reader)
+		body, err := pipe.fetcher(src.String())
 		if err != nil {
 			return nil, err
 		}
@@ -166,17 +161,10 @@ func fetch(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface
 	case []string:
 		vt, _ := src.Interface().([]string)
 		for i := 0; i < len(vt); i++ {
-			reader, err := pipe.fetcher(vt[i])
+			body, err := pipe.fetcher(vt[i])
 			if err != nil {
 				vt[i] = err.Error()
 				continue
-			}
-			body, err := ioutil.ReadAll(reader)
-			if err != nil {
-				return nil, err
-			}
-			if len(selector) == 0 {
-				return string(body), nil
 			}
 			if len(selector) == 0 {
 				vt[i] = string(body)
@@ -193,7 +181,7 @@ func fetch(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface
 				vt[i] = err.Error()
 				continue
 			}
-			vt[i] = res.(string)
+			vt[i], _ = res.(string)
 		}
 		return vt, nil
 	}
@@ -202,25 +190,28 @@ func fetch(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface
 
 //saveto(savePath)
 func saveto(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	if pipe.storer == nil || pipe.fetcher == nil {
-		return nil, nil
+	if pipe.storer == nil {
+		return src.String(), nil
+	}
+	var (
+		fetched  bool
+		savePath string
+	)
+	paramList := SplitParams(params.String(), `,`)
+	switch len(paramList) {
+	case 2:
+		fetched, _ = strconv.ParseBool(strings.TrimSpace(paramList[1]))
+		fallthrough
+	case 1:
+		savePath = strings.TrimSpace(paramList[0])
 	}
 	switch src.Interface().(type) {
 	case string:
-		reader, err := pipe.fetcher(src.String())
-		if err != nil {
-			return nil, err
-		}
-		return pipe.storer(reader, params.String())
+		return pipe.storer(src.String(), savePath, fetched)
 	case []string:
 		vt, _ := src.Interface().([]string)
 		for i := 0; i < len(vt); i++ {
-			reader, err := pipe.fetcher(vt[i])
-			if err != nil {
-				vt[i] = err.Error()
-				continue
-			}
-			newPath, err := pipe.storer(reader, params.String())
+			newPath, err := pipe.storer(vt[i], savePath, fetched)
 			if err != nil {
 				vt[i] = err.Error()
 				continue

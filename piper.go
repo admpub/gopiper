@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"io"
 	"regexp"
 	"strconv"
 	"strings"
@@ -82,8 +81,8 @@ type PipeItem struct {
 	pageType string
 }
 
-type Fether func(pageURL string) (body io.Reader, err error)
-type Storer func(reader io.Reader, savePath string) (newPath string, err error)
+type Fether func(pageURL string) (body []byte, err error)
+type Storer func(fileURL, savePath string, fetched bool) (newPath string, err error)
 
 type htmlselector struct {
 	*goquery.Selection
