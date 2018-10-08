@@ -53,6 +53,14 @@ func TestRegexp(t *testing.T) {
 	}
 }
 
+func TestFilterFuncRegexp(t *testing.T) {
+	results := filterExp.FindAllStringSubmatch(`abc(efee)`, -1)
+	assert.Equal(t, `efee`, results[0][2])
+	results = filterExp.FindAllStringSubmatch(`abc((e|f|g)$(e|f|g))中国$)|ccc(中国(中华人民共和国))`, -1)
+	assert.Equal(t, `(e|f|g)$(e|f|g))中国$`, results[0][2])
+	assert.Equal(t, `中国(中华人民共和国)`, results[1][2])
+}
+
 func TestSelector(t *testing.T) {
 	js, err := simplejson.NewJson([]byte(`{"value": ["1","2",{"data": ["3", "2", "1"]}]}`))
 	if err != nil {

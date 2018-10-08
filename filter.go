@@ -116,10 +116,12 @@ func callFilter(pipe *PipeItem, src interface{}, value string) (interface{}, err
 		paramValue := reflect.ValueOf(params)
 		next, err := applyFilter(pipe, name, &srcValue, &paramValue)
 		if err != nil {
+			if err == ErrInvalidContent {
+				return next, err
+			}
 			continue
 		}
 		src = next
-
 	}
 
 	return src, nil
@@ -128,7 +130,7 @@ func callFilter(pipe *PipeItem, src interface{}, value string) (interface{}, err
 //fetch(pageType,selector)
 func fetch(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if pipe.fetcher == nil {
-		return nil, nil
+		return src.Interface(), ErrFetcherNotRegistered
 	}
 	var (
 		pageType = pipe.pageType
@@ -185,13 +187,13 @@ func fetch(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface
 		}
 		return vt, nil
 	}
-	return params.String(), nil
+	return src.Interface(), nil
 }
 
 //saveto(savePath)
 func saveto(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if pipe.storer == nil {
-		return src.String(), nil
+		return src.Interface(), ErrStorerNotRegistered
 	}
 	var (
 		fetched  bool
@@ -220,7 +222,7 @@ func saveto(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interfac
 		}
 		return vt, nil
 	}
-	return params.String(), nil
+	return src.Interface(), nil
 }
 
 //preadd(prefix) => {prefix}{src}
@@ -316,7 +318,7 @@ func replace(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interfa
 //trim(;) => src=;a; => a
 func trim(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
-		return src.Interface(), errors.New("filter trim nil params")
+		return src.Interface(), ErrTrimNilParams
 	}
 	switch src.Interface().(type) {
 	case string:
@@ -350,7 +352,7 @@ func trimspace(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (inter
 //split(:) => src="a:b" => [a,b]
 func split(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
-		return src.Interface(), errors.New("filter split nil params")
+		return src.Interface(), ErrSplitNilParams
 	}
 	switch src.Interface().(type) {
 	case string:
@@ -379,7 +381,7 @@ func split(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface
 //join(:) => src=["a","b"] => a:b
 func join(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	if params == nil {
-		return src.Interface(), errors.New("filter split nil params")
+		return src.Interface(), ErrJoinNilParams
 	}
 	switch src.Interface().(type) {
 	case []string:

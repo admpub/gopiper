@@ -182,11 +182,11 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 		return callFilter(p, sv, p.Filter)
 	case PT_JSON_PARSE:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
-			return nil, errors.New("Pipe type jsonparse need one subItem!")
+			return nil, ErrJsonparseNeedSubItem
 		}
 		body, err := text2jsonbyte(rs)
 		if err != nil {
-			return nil, errors.New("jsonparse: text is not a json string" + err.Error())
+			return nil, errors.New("jsonparse: text is not a json string: " + err.Error())
 		}
 		parseItem := p.SubItem[0]
 		res, err := parseItem.pipeJson(body)
@@ -202,7 +202,7 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 		return callFilter(p, res, p.Filter)
 	case PT_MAP:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
-			return nil, errors.New("Pipe type array need one subItem!")
+			return nil, ErrArrayNeedSubItem
 		}
 		res := make(map[string]interface{})
 		for _, subitem := range p.SubItem {
@@ -213,7 +213,7 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 		}
 		return callFilter(p, res, p.Filter)
 	}
-	return nil, errors.New("Not support pipe type")
+	return nil, ErrNotSupportPipeType
 }
 
 func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
@@ -241,7 +241,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 	}
 
 	if sel.Size() == 0 {
-		return nil, errors.New("Selector can't Find node!: " + selector)
+		return nil, errors.New("Selector can't Find node: " + selector)
 	}
 
 	if attrExp.MatchString(p.Type) { // 例如：attr[href] 或 attr[src] 等
@@ -308,7 +308,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		return callFilter(p, res, p.Filter)
 	case PT_ARRAY:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
-			return nil, errors.New("Pipe type array need one subItem!")
+			return nil, ErrArrayNeedSubItem
 		}
 		arrayItem := p.SubItem[0]
 		res := make([]interface{}, 0)
@@ -319,7 +319,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		return callFilter(p, res, p.Filter)
 	case PT_MAP:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
-			return nil, errors.New("Pipe type array need one subItem!")
+			return nil, ErrArrayNeedSubItem
 		}
 		res := make(map[string]interface{})
 		for _, subitem := range p.SubItem {
@@ -333,8 +333,6 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 	default:
 		return callFilter(p, 0, p.Filter)
 	}
-
-	return nil, errors.New("Not support pipe type")
 }
 
 func parseHtmlSelector(s *goquery.Selection, selector string) (htmlselector, error) {
@@ -469,7 +467,7 @@ func parseHtmlAttr(sel htmlselector, tp string) (interface{}, error) {
 		return parseTextValue(text, tp)
 	}
 
-	return nil, errors.New("unknow html attr")
+	return nil, ErrUnknowHTMLAttr
 }
 
 func gethtmlattr_array(sel *goquery.Selection, attr, selector string) ([]string, error) {
@@ -604,7 +602,7 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 		return callFilter(p, js.Interface(), p.Filter)
 	case PT_JSON_PARSE:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
-			return nil, errors.New("Pipe type jsonparse need one subItem!")
+			return nil, ErrJsonparseNeedSubItem
 		}
 		bodyStr := strings.TrimSpace(js.MustString(""))
 		if len(bodyStr) == 0 {
@@ -612,7 +610,7 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 		}
 		body, err := text2jsonbyte(bodyStr)
 		if err != nil {
-			return nil, errors.New("jsonparse: text is not a json string" + err.Error())
+			return nil, errors.New("jsonparse: text is not a json string: " + err.Error())
 		}
 		parseItem := p.SubItem[0]
 		res, err := parseItem.pipeJson(body)
@@ -627,7 +625,7 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 		}
 
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
-			return nil, errors.New("Pipe type array need one subItem!")
+			return nil, ErrArrayNeedSubItem
 		}
 		arrayItem := p.SubItem[0]
 		res := make([]interface{}, 0)
@@ -639,7 +637,7 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 		return callFilter(p, res, p.Filter)
 	case PT_MAP:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
-			return nil, errors.New("Pipe type array need one subItem!")
+			return nil, ErrArrayNeedSubItem
 		}
 		data, _ := json.Marshal(js)
 		res := make(map[string]interface{})
@@ -654,8 +652,6 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 	default:
 		return callFilter(p, 0, p.Filter)
 	}
-
-	return nil, nil
 }
 
 func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
@@ -678,11 +674,11 @@ func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 		return callFilter(p, bodyStr, p.Filter)
 	case PT_JSON_PARSE:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
-			return nil, errors.New("Pipe type jsonparse need one subItem!")
+			return nil, ErrJsonparseNeedSubItem
 		}
 		body, err := text2jsonbyte(bodyStr)
 		if err != nil {
-			return nil, errors.New("jsonparse: text is not a json string" + err.Error())
+			return nil, errors.New("jsonparse: text is not a json string: " + err.Error())
 		}
 		parseItem := p.SubItem[0]
 		res, err := parseItem.pipeJson(body)
@@ -698,7 +694,7 @@ func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 		return callFilter(p, res, p.Filter)
 	case PT_MAP:
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
-			return nil, errors.New("Pipe type array need one subItem!")
+			return nil, ErrArrayNeedSubItem
 		}
 		res := make(map[string]interface{})
 		for _, subitem := range p.SubItem {
@@ -711,8 +707,6 @@ func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 	default:
 		return callFilter(p, 0, p.Filter)
 	}
-
-	return nil, errors.New("Not support pipe type")
 }
 
 func text2int(text interface{}) (interface{}, error) {
@@ -730,7 +724,7 @@ func text2int(text interface{}) (interface{}, error) {
 		}
 		return vs, nil
 	}
-	return nil, errors.New("unsupport text2int type")
+	return nil, ErrUnsupportText2intType
 }
 
 func text2float(text interface{}) (interface{}, error) {
@@ -748,7 +742,7 @@ func text2float(text interface{}) (interface{}, error) {
 		}
 		return vs, nil
 	}
-	return nil, errors.New("unsupport text2float type")
+	return nil, ErrUnsupportText2floatType
 }
 
 func text2bool(text interface{}) (interface{}, error) {
@@ -766,7 +760,7 @@ func text2bool(text interface{}) (interface{}, error) {
 		}
 		return vs, nil
 	}
-	return nil, errors.New("unsupport text2bool type")
+	return nil, ErrUnsupportText2boolType
 }
 
 func text2json(text string) (interface{}, error) {
