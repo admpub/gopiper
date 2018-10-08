@@ -28,8 +28,8 @@ func init() {
 	RegisterFilter("_numeric", numeric, "纯数字", `_numeric`, ``)
 	RegisterFilter("_match", match, "正则匹配", `_match([a-z]+)`, ``)
 	RegisterFilter("_unmatch", unmatch, "正则不匹配", `_unmatch([a-z]+)`, ``)
-	RegisterFilter("_match2", match2, "正则匹配(兼容Perl5和.NET)", `_match([a-z]+)`, ``)
-	RegisterFilter("_unmatch2", unmatch2, "正则不匹配(兼容Perl5和.NET)", `_unmatch([a-z]+)`, ``)
+	RegisterFilter("_match2", match2, "正则匹配(兼容Perl5和.NET)", `_match2([a-z]+)`, ``)
+	RegisterFilter("_unmatch2", unmatch2, "正则不匹配(兼容Perl5和.NET)", `_unmatch2([a-z]+)`, ``)
 }
 
 func required(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
