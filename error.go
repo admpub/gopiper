@@ -3,8 +3,8 @@ package gopiper
 import "errors"
 
 var (
-	ErrJsonparseNeedSubItem    = errors.New("Pipe type jsonparse need one subItem!")
-	ErrArrayNeedSubItem        = errors.New("Pipe type array need one subItem!")
+	ErrJsonparseNeedSubItem    = errors.New("Pipe type jsonparse need one subItem")
+	ErrArrayNeedSubItem        = errors.New("Pipe type array need one subItem")
 	ErrNotSupportPipeType      = errors.New("Not support pipe type")
 	ErrUnknowHTMLAttr          = errors.New("Unknow html attr")
 	ErrUnsupportText2boolType  = errors.New("Unsupport text2bool type")

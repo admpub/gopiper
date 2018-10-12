@@ -84,7 +84,7 @@ type PipeItem struct {
 type Fether func(pageURL string) (body []byte, err error)
 type Storer func(fileURL, savePath string, fetched bool) (newPath string, err error)
 
-type htmlselector struct {
+type htmlSelector struct {
 	*goquery.Selection
 	attr     string
 	selector string
@@ -116,7 +116,7 @@ func (p *PipeItem) PipeBytes(body []byte, pageType string) (interface{}, error) 
 		}
 		return p.pipeSelection(doc.Selection)
 	case PAGE_JSON:
-		return p.pipeJson(body)
+		return p.pipeJSON(body)
 	case PAGE_TEXT:
 		return p.pipeText(body)
 	}
@@ -184,18 +184,18 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, ErrJsonparseNeedSubItem
 		}
-		body, err := text2jsonbyte(rs)
+		body, err := text2JSONByte(rs)
 		if err != nil {
 			return nil, errors.New("jsonparse: text is not a json string: " + err.Error())
 		}
 		parseItem := p.SubItem[0]
-		res, err := parseItem.pipeJson(body)
+		res, err := parseItem.pipeJSON(body)
 		if err != nil {
 			return nil, err
 		}
 		return callFilter(p, res, p.Filter)
 	case PT_JSON_VALUE:
-		res, err := text2json(rs)
+		res, err := text2JSON(rs)
 		if err != nil {
 			return nil, err
 		}
@@ -219,7 +219,7 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 
 	var (
-		sel = htmlselector{s, "", p.Selector}
+		sel = htmlSelector{s, "", p.Selector}
 		err error
 	)
 	if strings.HasPrefix(p.Selector, REGEXP_PRE) {
@@ -233,7 +233,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 
 	selector := p.Selector
 	if len(selector) > 0 {
-		sel, err = parseHtmlSelector(s, selector)
+		sel, err = parseHTMLSelector(s, selector)
 		if err != nil {
 			return nil, err
 		}
@@ -266,7 +266,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 
 	switch p.Type {
 	case PT_INT, PT_FLOAT, PT_BOOL, PT_STRING, PT_TEXT, PT_INT_ARRAY, PT_FLOAT_ARRAY, PT_BOOL_ARRAY, PT_STRING_ARRAY:
-		val, err := parseHtmlAttr(sel, p.Type)
+		val, err := parseHTMLAttr(sel, p.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -335,10 +335,10 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 	}
 }
 
-func parseHtmlSelector(s *goquery.Selection, selector string) (htmlselector, error) {
+func parseHTMLSelector(s *goquery.Selection, selector string) (htmlSelector, error) {
 	var attr string
 	if len(selector) == 0 {
-		return htmlselector{s, attr, selector}, nil
+		return htmlSelector{s, attr, selector}, nil
 	}
 
 	// html: <a class="bn-sharing" data-type="book"></a>
@@ -349,16 +349,17 @@ func parseHtmlSelector(s *goquery.Selection, selector string) (htmlselector, err
 	}
 
 	// selector: ul > li | eq(2)
-	subs := strings.Split(selector, "|")
-	if len(subs) < 1 {
-		return htmlselector{s.Find(selector), attr, selector}, nil
+	subs := SplitParams(selector, `|`)
+	leng := len(subs)
+	if leng < 2 {
+		return htmlSelector{s.Find(selector), attr, selector}, nil
 	}
 	subs[0] = strings.TrimSpace(subs[0])
 	s = s.Find(subs[0])
-	for i := 1; i < len(subs); i++ {
+	for i := 1; i < leng; i++ {
 		subs[i] = strings.TrimSpace(subs[i])
 		if !fnExp.MatchString(subs[i]) {
-			return htmlselector{s, attr, selector}, errors.New("error parse html selector: " + subs[i])
+			return htmlSelector{s, attr, selector}, errors.New("error parse html selector: " + subs[i])
 		}
 
 		vt := fnExp.FindStringSubmatch(subs[i])
@@ -430,13 +431,17 @@ func parseHtmlSelector(s *goquery.Selection, selector string) (htmlselector, err
 			if len(params) > 0 {
 				s = s.SiblingsFiltered(params)
 			}
-		case "rm":
+		case "rm", "remove":
 			if len(params) > 0 {
 				s.Find(params).Remove()
 			}
+		case "attr":
+			if len(params) > 0 {
+				return htmlSelector{s, `attr[` + params + `]`, selector}, nil
+			}
 		}
 	}
-	return htmlselector{s, attr, selector}, nil
+	return htmlSelector{s, attr, selector}, nil
 }
 
 func parseTextValue(text interface{}, tp string) (interface{}, error) {
@@ -451,16 +456,16 @@ func parseTextValue(text interface{}, tp string) (interface{}, error) {
 	return text, nil
 }
 
-func parseHtmlAttr(sel htmlselector, tp string) (interface{}, error) {
+func parseHTMLAttr(sel htmlSelector, tp string) (interface{}, error) {
 	switch tp {
 	case PT_INT, PT_FLOAT, PT_BOOL, PT_TEXT, PT_STRING:
-		text, err := gethtmlattr(sel.Selection, sel.attr, sel.selector)
+		text, err := getHTMLAttr(sel.Selection, sel.attr, sel.selector)
 		if err != nil {
 			return nil, err
 		}
 		return parseTextValue(text, tp)
 	case PT_INT_ARRAY, PT_FLOAT_ARRAY, PT_BOOL_ARRAY, PT_STRING_ARRAY:
-		text, err := gethtmlattr_array(sel.Selection, sel.attr, sel.selector)
+		text, err := getHTMLAttrArray(sel.Selection, sel.attr, sel.selector)
 		if err != nil {
 			return nil, err
 		}
@@ -470,7 +475,7 @@ func parseHtmlAttr(sel htmlselector, tp string) (interface{}, error) {
 	return nil, ErrUnknowHTMLAttr
 }
 
-func gethtmlattr_array(sel *goquery.Selection, attr, selector string) ([]string, error) {
+func getHTMLAttrArray(sel *goquery.Selection, attr, selector string) ([]string, error) {
 	res := make([]string, 0)
 	if len(attr) == 0 {
 		sel.Each(func(index int, child *goquery.Selection) {
@@ -507,7 +512,7 @@ func gethtmlattr_array(sel *goquery.Selection, attr, selector string) ([]string,
 	return res, nil
 }
 
-func gethtmlattr(sel *goquery.Selection, attr, selector string) (string, error) {
+func getHTMLAttr(sel *goquery.Selection, attr, selector string) (string, error) {
 	if len(attr) == 0 {
 		return sel.Text(), nil
 	}
@@ -540,7 +545,7 @@ func gethtmlattr(sel *goquery.Selection, attr, selector string) (string, error) 
 	return sel.Text(), nil
 }
 
-func parseJsonSelector(js *simplejson.Json, selector string) (*simplejson.Json, error) {
+func parseJSONSelector(js *simplejson.Json, selector string) (*simplejson.Json, error) {
 	subs := strings.Split(selector, ".")
 	for _, s := range subs {
 		if index := strings.Index(s, "["); index >= 0 {
@@ -570,14 +575,14 @@ func parseJsonSelector(js *simplejson.Json, selector string) (*simplejson.Json, 
 	return js, nil
 }
 
-func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
+func (p *PipeItem) pipeJSON(body []byte) (interface{}, error) {
 	js, err := simplejson.NewJson(body)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(p.Selector) > 0 {
-		js, err = parseJsonSelector(js, p.Selector)
+		js, err = parseJSONSelector(js, p.Selector)
 		if err != nil {
 			return nil, err
 		}
@@ -608,12 +613,12 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 		if len(bodyStr) == 0 {
 			return nil, nil
 		}
-		body, err := text2jsonbyte(bodyStr)
+		body, err := text2JSONByte(bodyStr)
 		if err != nil {
 			return nil, errors.New("jsonparse: text is not a json string: " + err.Error())
 		}
 		parseItem := p.SubItem[0]
-		res, err := parseItem.pipeJson(body)
+		res, err := parseItem.pipeJSON(body)
 		if err != nil {
 			return nil, err
 		}
@@ -631,7 +636,7 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 		res := make([]interface{}, 0)
 		for _, r := range v {
 			data, _ := json.Marshal(r)
-			vl, _ := arrayItem.pipeJson(data)
+			vl, _ := arrayItem.pipeJSON(data)
 			res = append(res, vl)
 		}
 		return callFilter(p, res, p.Filter)
@@ -645,7 +650,7 @@ func (p *PipeItem) pipeJson(body []byte) (interface{}, error) {
 			if len(subitem.Name) == 0 {
 				continue
 			}
-			res[subitem.Name], _ = subitem.pipeJson(data)
+			res[subitem.Name], _ = subitem.pipeJSON(data)
 		}
 
 		return callFilter(p, res, p.Filter)
@@ -676,18 +681,18 @@ func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 		if p.SubItem == nil || len(p.SubItem) <= 0 {
 			return nil, ErrJsonparseNeedSubItem
 		}
-		body, err := text2jsonbyte(bodyStr)
+		body, err := text2JSONByte(bodyStr)
 		if err != nil {
 			return nil, errors.New("jsonparse: text is not a json string: " + err.Error())
 		}
 		parseItem := p.SubItem[0]
-		res, err := parseItem.pipeJson(body)
+		res, err := parseItem.pipeJSON(body)
 		if err != nil {
 			return nil, err
 		}
 		return callFilter(p, res, p.Filter)
 	case PT_JSON_VALUE:
-		res, err := text2json(string(body))
+		res, err := text2JSON(string(body))
 		if err != nil {
 			return nil, err
 		}
@@ -763,23 +768,23 @@ func text2bool(text interface{}) (interface{}, error) {
 	return nil, ErrUnsupportText2boolType
 }
 
-func text2json(text string) (interface{}, error) {
-	res, err := textJsonValue(text)
+func text2JSON(text string) (interface{}, error) {
+	res, err := textJSONValue(text)
 	if err != nil {
-		return untextJsonValue(text)
+		return untextJSONValue(text)
 	}
 	return res, nil
 }
 
-func text2jsonbyte(text string) ([]byte, error) {
-	val, err := text2json(text)
+func text2JSONByte(text string) ([]byte, error) {
+	val, err := text2JSON(text)
 	if err != nil {
 		return nil, err
 	}
 	return json.Marshal(val)
 }
 
-func textJsonValue(text string) (interface{}, error) {
+func textJSONValue(text string) (interface{}, error) {
 	res := map[string]interface{}{}
 	if err := json.Unmarshal([]byte(text), &res); err != nil {
 		resarray := make([]interface{}, 0)
@@ -792,10 +797,10 @@ func textJsonValue(text string) (interface{}, error) {
 	return res, nil
 }
 
-func untextJsonValue(text string) (interface{}, error) {
+func untextJSONValue(text string) (interface{}, error) {
 	text, err := strconv.Unquote(`"` + text + `"`)
 	if err != nil {
 		return nil, err
 	}
-	return textJsonValue(text)
+	return textJSONValue(text)
 }

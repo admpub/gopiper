@@ -67,7 +67,7 @@ func TestSelector(t *testing.T) {
 		log.Println(err)
 		return
 	}
-	if js, err = parseJsonSelector(js, "this.value[2].data[1]"); err != nil {
+	if js, err = parseJSONSelector(js, "this.value[2].data[1]"); err != nil {
 		t.Fatal(err)
 	} else {
 		fmt.Println(`=== [ TestSelector ] ===================================\`)
@@ -147,7 +147,7 @@ func TestHtmlDouban(t *testing.T) {
 		},
 		{
 			"type": "string",
-			"selector": "#content .gtleft a.bn-sharing//attr[data-pic]",
+			"selector": "#content .gtleft a.bn-sharing|attr(data-pic)",
 			"name": "thumbnail"
 		},
 		{
@@ -232,7 +232,7 @@ func TestHtmlDouban(t *testing.T) {
 `)
 
 	log.Println(callFilter(nil, "美团他|女神||", `preadd(AAAA)|split(|)|join(,)`))
-	if val, err := test_piper("http://movie.douban.com/subject/25850640/", "html", pb); err != nil {
+	if val, err := testPiper("http://movie.douban.com/subject/25850640/", "html", pb); err != nil {
 		t.Fatal(err)
 	} else {
 		fmt.Println(`=== [ TestHtmlDouban ] ===================================\`)
@@ -241,7 +241,7 @@ func TestHtmlDouban(t *testing.T) {
 		fmt.Println()
 	}
 
-	if val, err := test_piper("http://movie.douban.com/subject/2035218/?from=tag_all", "html", pb); err != nil {
+	if val, err := testPiper("http://movie.douban.com/subject/2035218/?from=tag_all", "html", pb); err != nil {
 		t.Fatal(err)
 	} else {
 		fmt.Println(`=== [ TestHtmlDouban ] ===================================\`)
@@ -252,7 +252,7 @@ func TestHtmlDouban(t *testing.T) {
 
 }
 
-func test_piper(u string, tp string, pb []byte, headers ...string) (interface{}, error) {
+func testPiper(u string, tp string, pb []byte, headers ...string) (interface{}, error) {
 	pipe := PipeItem{}
 	err := json.Unmarshal(pb, &pipe)
 
@@ -292,7 +292,7 @@ func TestBaidu(t *testing.T) {
 			]
 		}
 	`)
-	val, err := test_piper("https://author.baidu.com/profile?context={%22app_id%22:%221567569757829059%22}&cmdType=&pagelets[]=root&reqID=0&ispeed=1", "text", pb, "Cookie", "BAIDUID=D0FB1501E11F72B20AEC00CED2C220D5:FG=1")
+	val, err := testPiper("https://author.baidu.com/profile?context={%22app_id%22:%221567569757829059%22}&cmdType=&pagelets[]=root&reqID=0&ispeed=1", "text", pb, "Cookie", "BAIDUID=D0FB1501E11F72B20AEC00CED2C220D5:FG=1")
 	if err != nil {
 		t.Fatal(err)
 		return
