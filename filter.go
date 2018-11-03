@@ -25,7 +25,7 @@ func init() {
 	RegisterFilter("intval", intval, "转换为整数", `intval`, ``)
 	RegisterFilter("floatval", floatval, "转换为小数", `floatval`, ``)
 	RegisterFilter("hrefreplace", hrefreplace, "替换href属性。$2为捕获到的href属性值", `hrefreplace(data-url="$2")`, ``)
-	RegisterFilter("regexpreplace", regexpreplace, "正则替换", `regexpreplace(^A$,B)`, ``)
+	RegisterFilter("regexpreplace", regexpreplace, "正则替换(regexp2引擎)。参数1为正则表达式，参数2为替换成的新内容，参数3为起始位置编号(从0开始)，参数4为替换次数(-1代表全部替换)", `regexpreplace(^A$,B,0,-1)`, ``)
 	RegisterFilter("wraphtml", wraphtml, "将采集到的数据用HTML标签包围起来", `wraphtml(a)`, ``)
 	RegisterFilter("tosbc", tosbc, "将全角的标点符号和英文字母转换为半角", `tosbc`, ``)
 	RegisterFilter("unescape", unescape, "解码HTML", `unescape`, ``)
