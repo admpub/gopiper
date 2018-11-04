@@ -353,6 +353,9 @@ func regexpreplace(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (i
 				if err != nil {
 					return v, err
 				}
+				if len(v) == 0 {
+					break
+				}
 				find, err = re.MatchString(v)
 			}
 			return v, err
