@@ -24,6 +24,7 @@ const (
 	PT_FLOAT_ARRAY  = "float-array"
 	PT_BOOL_ARRAY   = "bool-array"
 	PT_STRING_ARRAY = "string-array"
+	PT_HTML_ARRAY   = "html-array"
 	PT_MAP          = "map"
 	PT_ARRAY        = "array"
 	PT_JSON_VALUE   = "json"
@@ -271,17 +272,24 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 			return nil, err
 		}
 		return callFilter(p, val, p.Filter)
+	case PT_HTML_ARRAY:
+		res := make([]string, 0)
+		sel.Each(func(index int, child *goquery.Selection) {
+			str, _ := child.Html()
+			res = append(res, str)
+		})
+		return callFilter(p, res, p.Filter)
 	case PT_HTML:
 		var html string
-		sel.Each(func(idx int, s1 *goquery.Selection) {
-			str, _ := s1.Html()
+		sel.Each(func(idx int, child *goquery.Selection) {
+			str, _ := child.Html()
 			html += str
 		})
 		return callFilter(p, html, p.Filter)
 	case PT_OUT_HTML:
 		var html string
-		sel.Each(func(idx int, s1 *goquery.Selection) {
-			str, _ := goquery.OuterHtml(s1)
+		sel.Each(func(idx int, child *goquery.Selection) {
+			str, _ := goquery.OuterHtml(child)
 			html += str
 		})
 		return callFilter(p, html, p.Filter)
