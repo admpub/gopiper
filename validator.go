@@ -33,335 +33,139 @@ func init() {
 }
 
 func required(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	switch vt := src.Interface().(type) {
-	case string:
-		if len(vt) == 0 {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if len(v) == 0 {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-	case []string:
-		var rt []string
-		for _, v := range vt {
-			if len(v) == 0 {
-				continue
-			}
-			rt = append(rt, v)
-		}
-		return vt, nil
-
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func email(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	switch vt := src.Interface().(type) {
-	case string:
-		if !com.IsEmailRFC(vt) {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if !com.IsEmailRFC(v) {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-	case []string:
-		var rt []string
-		for _, v := range vt {
-			if !com.IsEmailRFC(v) {
-				continue
-			}
-			rt = append(rt, v)
-		}
-		return vt, nil
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func username(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	switch vt := src.Interface().(type) {
-	case string:
-		if !com.IsUsername(vt) {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if !com.IsUsername(v) {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-	case []string:
-		var rt []string
-		for _, v := range vt {
-			if !com.IsUsername(v) {
-				continue
-			}
-			rt = append(rt, v)
-		}
-		return vt, nil
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func singleline(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	switch vt := src.Interface().(type) {
-	case string:
-		if !com.IsSingleLineText(vt) {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if !com.IsSingleLineText(v) {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-	case []string:
-		var rt []string
-		for _, v := range vt {
-			if !com.IsSingleLineText(v) {
-				continue
-			}
-			rt = append(rt, v)
-		}
-		return vt, nil
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func mutiline(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	switch vt := src.Interface().(type) {
-	case string:
-		if !com.IsMultiLineText(vt) {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if !com.IsMultiLineText(v) {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-	case []string:
-		var rt []string
-		for _, v := range vt {
-			if !com.IsMultiLineText(v) {
-				continue
-			}
-			rt = append(rt, v)
-		}
-		return vt, nil
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func url(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	switch vt := src.Interface().(type) {
-	case string:
-		if !com.IsURL(vt) {
-			return vt, ErrInvalidContent
+
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if !com.IsURL(v) {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-	case []string:
-		var rt []string
-		for _, v := range vt {
-			if !com.IsURL(v) {
-				continue
-			}
-			rt = append(rt, v)
-		}
-		return vt, nil
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func chinese(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	switch vt := src.Interface().(type) {
-	case string:
-		if !com.IsChinese(vt) {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if !com.IsChinese(v) {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-	case []string:
-		var rt []string
-		for _, v := range vt {
-			if !com.IsChinese(v) {
-				continue
-			}
-			rt = append(rt, v)
-		}
-		return vt, nil
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func haschinese(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	switch vt := src.Interface().(type) {
-	case string:
-		if !com.HasChinese(vt) {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if !com.HasChinese(v) {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-	case []string:
-		var rt []string
-		for _, v := range vt {
-			if !com.HasChinese(v) {
-				continue
-			}
-			rt = append(rt, v)
-		}
-		return vt, nil
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func minsize(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	minSize, _ := strconv.Atoi(params.String())
-	switch vt := src.Interface().(type) {
-	case string:
-		if utf8.RuneCountInString(vt) < minSize {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if utf8.RuneCountInString(v) < minSize {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-	case []string:
-		var rt []string
-		for _, v := range vt {
-			if utf8.RuneCountInString(v) < minSize {
-				continue
-			}
-			rt = append(rt, v)
-		}
-		return vt, nil
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func maxsize(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	maxSize, _ := strconv.Atoi(params.String())
-	switch vt := src.Interface().(type) {
-	case string:
-		if utf8.RuneCountInString(vt) > maxSize {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if utf8.RuneCountInString(v) > maxSize {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-
-	case []string:
-		var rt []string
-		for _, v := range vt {
-			if utf8.RuneCountInString(v) > maxSize {
-				continue
-			}
-			rt = append(rt, v)
-		}
-		return vt, nil
-
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func size(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	size, _ := strconv.Atoi(params.String())
-	switch vt := src.Interface().(type) {
-	case string:
-		if utf8.RuneCountInString(vt) != size {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if utf8.RuneCountInString(v) != size {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-
-	case []string:
-		var rt []string
-		for _, v := range vt {
-			if utf8.RuneCountInString(v) != size {
-				continue
-			}
-			rt = append(rt, v)
-		}
-		return vt, nil
-
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func alpha(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	switch vt := src.Interface().(type) {
-	case string:
-		for _, v := range vt {
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		for _, v := range v {
 			if !com.IsAlpha(v) {
-				return vt, ErrInvalidContent
+				return v, ErrInvalidContent
 			}
 		}
-		return vt, nil
-
-	case []string:
-		var rt []string
-		for _, str := range vt {
-			isAlpha := true
-			for _, v := range str {
-				if !com.IsAlpha(v) {
-					isAlpha = false
-				}
-			}
-			if !isAlpha {
-				continue
-			}
-			rt = append(rt, str)
-		}
-		return vt, nil
-
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func alphanum(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	switch vt := src.Interface().(type) {
-	case string:
-		for _, v := range vt {
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		for _, v := range v {
 			if !com.IsAlphaNumeric(v) {
-				return vt, ErrInvalidContent
+				return v, ErrInvalidContent
 			}
 		}
-		return vt, nil
-
-	case []string:
-		var rt []string
-		for _, str := range vt {
-			isAlphaNumeric := true
-			for _, v := range str {
-				if !com.IsAlphaNumeric(v) {
-					isAlphaNumeric = false
-				}
-			}
-			if !isAlphaNumeric {
-				continue
-			}
-			rt = append(rt, str)
-		}
-		return vt, nil
-
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func numeric(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
-	switch vt := src.Interface().(type) {
-	case string:
-		for _, v := range vt {
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		for _, v := range v {
 			if !com.IsNumeric(v) {
-				return vt, ErrInvalidContent
+				return v, ErrInvalidContent
 			}
 		}
-		return vt, nil
-
-	case []string:
-		var rt []string
-		for _, str := range vt {
-			isNumeric := true
-			for _, v := range str {
-				if !com.IsNumeric(v) {
-					isNumeric = false
-				}
-			}
-			if !isNumeric {
-				continue
-			}
-			rt = append(rt, str)
-		}
-		return vt, nil
-
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func match(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
@@ -369,26 +173,12 @@ func match(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface
 	if err != nil {
 		return src.Interface(), err
 	}
-	switch vt := src.Interface().(type) {
-	case string:
-		if !re.MatchString(vt) {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if !re.MatchString(v) {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-
-	case []string:
-		var rt []string
-		for _, str := range vt {
-			if !re.MatchString(str) {
-				continue
-			}
-			rt = append(rt, str)
-		}
-		return vt, nil
-
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func unmatch(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
@@ -396,26 +186,12 @@ func unmatch(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interfa
 	if err != nil {
 		return src.Interface(), err
 	}
-	switch vt := src.Interface().(type) {
-	case string:
-		if re.MatchString(vt) {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if re.MatchString(v) {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-
-	case []string:
-		var rt []string
-		for _, str := range vt {
-			if re.MatchString(str) {
-				continue
-			}
-			rt = append(rt, str)
-		}
-		return vt, nil
-
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func match2(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
@@ -423,26 +199,12 @@ func match2(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interfac
 	if err != nil {
 		return src.Interface(), err
 	}
-	switch vt := src.Interface().(type) {
-	case string:
-		if ok, _ := re.MatchString(vt); !ok {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if ok, _ := re.MatchString(v); !ok {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-
-	case []string:
-		var rt []string
-		for _, str := range vt {
-			if ok, _ := re.MatchString(str); !ok {
-				continue
-			}
-			rt = append(rt, str)
-		}
-		return vt, nil
-
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
 
 func unmatch2(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
@@ -450,24 +212,10 @@ func unmatch2(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interf
 	if err != nil {
 		return src.Interface(), err
 	}
-	switch vt := src.Interface().(type) {
-	case string:
-		if ok, _ := re.MatchString(vt); ok {
-			return vt, ErrInvalidContent
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		if ok, _ := re.MatchString(v); ok {
+			return v, ErrInvalidContent
 		}
-		return vt, nil
-
-	case []string:
-		var rt []string
-		for _, str := range vt {
-			if ok, _ := re.MatchString(str); ok {
-				continue
-			}
-			rt = append(rt, str)
-		}
-		return vt, nil
-
-	default:
-		return vt, nil
-	}
+		return v, nil
+	})
 }
