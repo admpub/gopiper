@@ -97,7 +97,7 @@ var (
 func applyFilter(pipe *PipeItem, name string, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	filter, existing := filters[name]
 	if !existing {
-		return nil, fmt.Errorf("Filter with name '%s' not found.", name)
+		return nil, fmt.Errorf("Filter with name '%s' not found", name)
 	}
 	return filter.function(pipe, src, params)
 }

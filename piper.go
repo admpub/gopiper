@@ -191,6 +191,8 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 			return nil, errors.New("jsonparse: text is not a json string: " + err.Error())
 		}
 		parseItem := p.SubItem[0]
+		parseItem.SetFetcher(p.fetcher)
+		parseItem.SetStorer(p.storer)
 		res, err := parseItem.pipeJSON(body)
 		if err != nil {
 			return nil, err
@@ -211,6 +213,8 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 			if len(subitem.Name) == 0 {
 				continue
 			}
+			subitem.SetFetcher(p.fetcher)
+			subitem.SetStorer(p.storer)
 			res[subitem.Name], _ = subitem.pipeText([]byte(rs))
 		}
 		return callFilter(p, res, p.Filter)
@@ -324,6 +328,8 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 			return nil, ErrArrayNeedSubItem
 		}
 		arrayItem := p.SubItem[0]
+		arrayItem.SetFetcher(p.fetcher)
+		arrayItem.SetStorer(p.storer)
 		res := make([]interface{}, 0)
 		sel.Each(func(index int, child *goquery.Selection) {
 			v, _ := arrayItem.pipeSelection(child)
@@ -339,6 +345,8 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 			if len(subitem.Name) == 0 {
 				continue
 			}
+			subitem.SetFetcher(p.fetcher)
+			subitem.SetStorer(p.storer)
 			res[subitem.Name], _ = subitem.pipeSelection(sel.Selection)
 		}
 
@@ -634,6 +642,8 @@ func (p *PipeItem) pipeJSON(body []byte) (interface{}, error) {
 			return nil, errors.New("jsonparse: text is not a json string: " + err.Error())
 		}
 		parseItem := p.SubItem[0]
+		parseItem.SetFetcher(p.fetcher)
+		parseItem.SetStorer(p.storer)
 		res, err := parseItem.pipeJSON(body)
 		if err != nil {
 			return nil, err
@@ -649,6 +659,8 @@ func (p *PipeItem) pipeJSON(body []byte) (interface{}, error) {
 			return nil, ErrArrayNeedSubItem
 		}
 		arrayItem := p.SubItem[0]
+		arrayItem.SetFetcher(p.fetcher)
+		arrayItem.SetStorer(p.storer)
 		res := make([]interface{}, 0)
 		for _, r := range v {
 			data, _ := json.Marshal(r)
@@ -666,6 +678,8 @@ func (p *PipeItem) pipeJSON(body []byte) (interface{}, error) {
 			if len(subitem.Name) == 0 {
 				continue
 			}
+			subitem.SetFetcher(p.fetcher)
+			subitem.SetStorer(p.storer)
 			res[subitem.Name], _ = subitem.pipeJSON(data)
 		}
 
@@ -705,6 +719,8 @@ func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 			return nil, errors.New("jsonparse: text is not a json string: " + err.Error())
 		}
 		parseItem := p.SubItem[0]
+		parseItem.SetFetcher(p.fetcher)
+		parseItem.SetStorer(p.storer)
 		res, err := parseItem.pipeJSON(body)
 		if err != nil {
 			return nil, err
