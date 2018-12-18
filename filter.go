@@ -21,6 +21,8 @@ func init() {
 	RegisterFilter("split", split, "将字符串按指定分隔符分割成数组", `split(-)`, ``)
 	RegisterFilter("join", join, "合并数组为字符串", `join(-)`, ``)
 	RegisterFilter("trim", trim, "剪掉头尾指定字符", `trim(;)`, ``)
+	RegisterFilter("trimleft", trimleft, "获取扩展名", `trimleft(.html)`, ``)
+	RegisterFilter("trimright", trimright, "获取扩展名", `trimright(a-)`, ``)
 	RegisterFilter("trimspace", trimspace, "剪掉头尾空白", `trimspace`, ``)
 	RegisterFilter("substr", substr, "获取子字符串。字符串总是从左向右从0开始编号，参数1和参数2分别用来指定要截取的起止位置编号，截取子字符串时，总是包含起始编号的字符，不包含终止编号的字符", `substr(0,5)`, ``)
 	RegisterFilter("intval", intval, "转换为整数", `intval`, ``)
@@ -256,6 +258,22 @@ func trim(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{
 	}
 	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
 		return strings.Trim(v, params.String()), nil
+	})
+}
+func trimleft(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
+	if params == nil {
+		return src.Interface(), ErrTrimNilParams
+	}
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		return strings.TrimLeft(v, params.String()), nil
+	})
+}
+func trimright(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
+	if params == nil {
+		return src.Interface(), ErrTrimNilParams
+	}
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		return strings.TrimRight(v, params.String()), nil
 	})
 }
 
