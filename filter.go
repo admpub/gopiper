@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"path"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -39,6 +40,8 @@ func init() {
 	RegisterFilter("unquote", unquote, "取消双引号包围", `unquote`, ``)
 	RegisterFilter("saveto", saveto, "下载并保存文件到指定位置", `saveto(savePath)`, ``)
 	RegisterFilter("fetch", fetch, "抓取网址内容", `fetch(pageType,selector)`, ``)
+	RegisterFilter("basename", basename, "获取文件名", `basename`, ``)
+	RegisterFilter("extension", extension, "获取扩展名", `extension`, ``)
 }
 
 type FilterFunction func(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error)
@@ -300,6 +303,20 @@ func join(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{
 func intval(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
 		return strconv.Atoi(v)
+	})
+}
+
+//basename => src="a/b/c.html" => c.html
+func basename(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		return path.Base(v), nil
+	})
+}
+
+//extension => src="a/b/c.html" => .html
+func extension(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
+	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
+		return path.Ext(v), nil
 	})
 }
 
