@@ -221,7 +221,9 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 }
 
 func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
-
+	if p.Type == PT_RAW {
+		return callFilter(p, p.Selector, p.Filter)
+	}
 	var (
 		sel = htmlSelector{s, "", p.Selector}
 		err error
@@ -341,8 +343,6 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		}
 
 		return callFilter(p, res, p.Filter)
-	case PT_RAW:
-		return callFilter(p, p.Selector, p.Filter)
 	default:
 		return callFilter(p, 0, p.Filter)
 	}
@@ -589,6 +589,9 @@ func parseJSONSelector(js *simplejson.Json, selector string) (*simplejson.Json, 
 }
 
 func (p *PipeItem) pipeJSON(body []byte) (interface{}, error) {
+	if p.Type == PT_RAW {
+		return callFilter(p, p.Selector, p.Filter)
+	}
 	js, err := simplejson.NewJson(body)
 	if err != nil {
 		return nil, err
@@ -667,14 +670,15 @@ func (p *PipeItem) pipeJSON(body []byte) (interface{}, error) {
 		}
 
 		return callFilter(p, res, p.Filter)
-	case PT_RAW:
-		return callFilter(p, p.Selector, p.Filter)
 	default:
 		return callFilter(p, 0, p.Filter)
 	}
 }
 
 func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
+	if p.Type == PT_RAW {
+		return callFilter(p, p.Selector, p.Filter)
+	}
 	bodyStr := string(body)
 	if strings.HasPrefix(p.Selector, REGEXP_PRE) {
 		return p.parseRegexp(bodyStr, false)
@@ -724,8 +728,6 @@ func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 			res[subitem.Name], _ = subitem.pipeText(body)
 		}
 		return callFilter(p, res, p.Filter)
-	case PT_RAW:
-		return callFilter(p, p.Selector, p.Filter)
 	default:
 		return callFilter(p, 0, p.Filter)
 	}
