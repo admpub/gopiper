@@ -11,11 +11,12 @@ import (
 	"github.com/admpub/regexp2"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/bitly/go-simplejson"
+	simplejson "github.com/bitly/go-simplejson"
 )
 
 const (
 	// begin new version
+	PT_RAW          = "raw"
 	PT_INT          = "int"
 	PT_FLOAT        = "float"
 	PT_BOOL         = "bool"
@@ -213,6 +214,8 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 			res[subitem.Name], _ = subitem.pipeText([]byte(rs))
 		}
 		return callFilter(p, res, p.Filter)
+	case PT_RAW:
+		return callFilter(p, p.Selector, p.Filter)
 	}
 	return nil, ErrNotSupportPipeType
 }
@@ -338,6 +341,8 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		}
 
 		return callFilter(p, res, p.Filter)
+	case PT_RAW:
+		return callFilter(p, p.Selector, p.Filter)
 	default:
 		return callFilter(p, 0, p.Filter)
 	}
@@ -662,6 +667,8 @@ func (p *PipeItem) pipeJSON(body []byte) (interface{}, error) {
 		}
 
 		return callFilter(p, res, p.Filter)
+	case PT_RAW:
+		return callFilter(p, p.Selector, p.Filter)
 	default:
 		return callFilter(p, 0, p.Filter)
 	}
@@ -717,6 +724,8 @@ func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 			res[subitem.Name], _ = subitem.pipeText(body)
 		}
 		return callFilter(p, res, p.Filter)
+	case PT_RAW:
+		return callFilter(p, p.Selector, p.Filter)
 	default:
 		return callFilter(p, 0, p.Filter)
 	}
