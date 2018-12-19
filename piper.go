@@ -430,23 +430,51 @@ func (p *PipeItem) parseHTMLSelector(s *goquery.Selection, selector string) (htm
 			pm, _ := strconv.Atoi(params)
 			s = s.Eq(pm)
 		case "next":
-			s = s.Next()
+			if len(params) > 0 {
+				s = s.NextFiltered(params)
+			} else {
+				s = s.Next()
+			}
 		case "prev":
-			s = s.Prev()
+			if len(params) > 0 {
+				s = s.PrevFiltered(params)
+			} else {
+				s = s.Prev()
+			}
 		case "first":
 			s = s.First()
 		case "last":
 			s = s.Last()
 		case "siblings":
-			s = s.Siblings()
+			if len(params) > 0 {
+				s = s.SiblingsFiltered(params)
+			} else {
+				s = s.Siblings()
+			}
 		case "nextall":
-			s = s.NextAll()
+			if len(params) > 0 {
+				s = s.NextAllFiltered(params)
+			} else {
+				s = s.NextAll()
+			}
 		case "children":
-			s = s.Children()
+			if len(params) > 0 {
+				s = s.ChildrenFiltered(params)
+			} else {
+				s = s.Children()
+			}
 		case "parent":
-			s = s.Parent()
+			if len(params) > 0 {
+				s = s.ParentFiltered(params)
+			} else {
+				s = s.Parent()
+			}
 		case "parents":
-			s = s.Parents()
+			if len(params) > 0 {
+				s = s.ParentsFiltered(params)
+			} else {
+				s = s.Parents()
+			}
 		case "not":
 			if len(params) > 0 {
 				s = s.Not(params)
@@ -455,37 +483,11 @@ func (p *PipeItem) parseHTMLSelector(s *goquery.Selection, selector string) (htm
 			if len(params) > 0 {
 				s = s.Filter(params)
 			}
-		case "prevfilter":
-			if len(params) > 0 {
-				s = s.PrevFiltered(params)
-			}
-		case "prevallfilter":
+		case "prevall":
 			if len(params) > 0 {
 				s = s.PrevAllFiltered(params)
-			}
-		case "nextfilter":
-			if len(params) > 0 {
-				s = s.NextFiltered(params)
-			}
-		case "nextallfilter":
-			if len(params) > 0 {
-				s = s.NextAllFiltered(params)
-			}
-		case "parentfilter":
-			if len(params) > 0 {
-				s = s.ParentFiltered(params)
-			}
-		case "parentsfilter":
-			if len(params) > 0 {
-				s = s.ParentsFiltered(params)
-			}
-		case "childrenfilter":
-			if len(params) > 0 {
-				s = s.ChildrenFiltered(params)
-			}
-		case "siblingsfilter":
-			if len(params) > 0 {
-				s = s.SiblingsFiltered(params)
+			} else {
+				s = s.PrevAll()
 			}
 		case "rm", "remove":
 			if len(params) > 0 {
