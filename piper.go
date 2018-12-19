@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -215,6 +216,7 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 			}
 			subitem.SetFetcher(p.fetcher)
 			subitem.SetStorer(p.storer)
+			subitem.Name = replaceName(subitem.Name, res)
 			res[subitem.Name], _ = subitem.pipeText([]byte(rs))
 		}
 		return callFilter(p, res, p.Filter)
@@ -222,6 +224,28 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 		return callFilter(p, p.Selector, p.Filter)
 	}
 	return nil, ErrNotSupportPipeType
+}
+
+var namePlaceholder = regexp.MustCompile(`#([^#]*)#`)
+
+func replaceName(name string, data map[string]interface{}) string {
+	vt := namePlaceholder.FindAllStringSubmatch(name, -1)
+	for _, v := range vt {
+		if len(v) < 2 {
+			continue
+		}
+		placeholder := v[1]
+		var value string
+		val, ok := data[placeholder]
+		if ok {
+			value, ok = val.(string)
+			if !ok {
+				value = fmt.Sprint(val)
+			}
+		}
+		name = strings.Replace(name, v[0], value, -1)
+	}
+	return name
 }
 
 func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
@@ -347,6 +371,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 			}
 			subitem.SetFetcher(p.fetcher)
 			subitem.SetStorer(p.storer)
+			subitem.Name = replaceName(subitem.Name, res)
 			res[subitem.Name], _ = subitem.pipeSelection(sel.Selection)
 		}
 
@@ -684,6 +709,7 @@ func (p *PipeItem) pipeJSON(body []byte) (interface{}, error) {
 			}
 			subitem.SetFetcher(p.fetcher)
 			subitem.SetStorer(p.storer)
+			subitem.Name = replaceName(subitem.Name, res)
 			res[subitem.Name], _ = subitem.pipeJSON(data)
 		}
 
@@ -745,6 +771,7 @@ func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 			if len(subitem.Name) == 0 {
 				continue
 			}
+			subitem.Name = replaceName(subitem.Name, res)
 			res[subitem.Name], _ = subitem.pipeText(body)
 		}
 		return callFilter(p, res, p.Filter)
