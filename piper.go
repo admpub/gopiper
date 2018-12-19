@@ -74,14 +74,15 @@ func VerifySelector(selector string) (err error) {
 }
 
 type PipeItem struct {
-	Name     string     `json:"name,omitempty"` //只有类型为map的时候才会用到
-	Selector string     `json:"selector,omitempty"`
-	Type     string     `json:"type"`
-	Filter   string     `json:"filter,omitempty"`
-	SubItem  []PipeItem `json:"subitem,omitempty"`
-	fetcher  Fether
-	storer   Storer
-	pageType string
+	Name         string     `json:"name,omitempty"` //只有类型为map的时候才会用到
+	Selector     string     `json:"selector,omitempty"`
+	Type         string     `json:"type"`
+	Filter       string     `json:"filter,omitempty"`
+	SubItem      []PipeItem `json:"subitem,omitempty"`
+	fetcher      Fether
+	storer       Storer
+	pageType     string
+	rootSelector *goquery.Selection
 }
 
 type Fether func(pageURL string) (body []byte, err error)
@@ -117,6 +118,7 @@ func (p *PipeItem) PipeBytes(body []byte, pageType string) (interface{}, error) 
 		if err != nil {
 			return nil, err
 		}
+		p.rootSelector = doc.Selection
 		return p.pipeSelection(doc.Selection)
 	case PAGE_JSON:
 		return p.pipeJSON(body)
@@ -264,8 +266,11 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		body, _ := sel.Html()
 		return p.parseRegexp(body, true)
 	}
-
 	selector := p.Selector
+	if strings.HasPrefix(selector, `$.`) {
+		selector = strings.TrimPrefix(selector, `$`)
+		s = p.rootSelector
+	}
 	if len(selector) > 0 {
 		sel, err = parseHTMLSelector(s, selector)
 		if err != nil {
