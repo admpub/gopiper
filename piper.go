@@ -356,6 +356,10 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 	}
 }
 
+func (p *PipeItem) CallFilter(src interface{}, filters string) (interface{}, error) {
+	return callFilter(p, src, filters)
+}
+
 func parseHTMLSelector(s *goquery.Selection, selector string) (htmlSelector, error) {
 	var attr string
 	if len(selector) == 0 {
