@@ -74,15 +74,15 @@ func VerifySelector(selector string) (err error) {
 }
 
 type PipeItem struct {
-	Name         string     `json:"name,omitempty"` //只有类型为map的时候才会用到
-	Selector     string     `json:"selector,omitempty"`
-	Type         string     `json:"type"`
-	Filter       string     `json:"filter,omitempty"`
-	SubItem      []PipeItem `json:"subitem,omitempty"`
-	fetcher      Fether
-	storer       Storer
-	pageType     string
-	rootSelector *goquery.Selection
+	Name     string     `json:"name,omitempty"` //只有类型为map的时候才会用到
+	Selector string     `json:"selector,omitempty"`
+	Type     string     `json:"type"`
+	Filter   string     `json:"filter,omitempty"`
+	SubItem  []PipeItem `json:"subitem,omitempty"`
+	fetcher  Fether
+	storer   Storer
+	pageType string
+	doc      *goquery.Document
 }
 
 type Fether func(pageURL string) (body []byte, err error)
@@ -102,6 +102,12 @@ func (p *PipeItem) SetStorer(storer Storer) {
 	p.storer = storer
 }
 
+func (p *PipeItem) CopyFrom(from *PipeItem) {
+	p.SetFetcher(from.fetcher)
+	p.SetStorer(from.storer)
+	p.doc = from.doc
+}
+
 func (p *PipeItem) Fetcher() Fether {
 	return p.fetcher
 }
@@ -118,7 +124,7 @@ func (p *PipeItem) PipeBytes(body []byte, pageType string) (interface{}, error) 
 		if err != nil {
 			return nil, err
 		}
-		p.rootSelector = doc.Selection
+		p.doc = doc
 		return p.pipeSelection(doc.Selection)
 	case PAGE_JSON:
 		return p.pipeJSON(body)
@@ -194,8 +200,7 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 			return nil, errors.New("jsonparse: text is not a json string: " + err.Error())
 		}
 		parseItem := p.SubItem[0]
-		parseItem.SetFetcher(p.fetcher)
-		parseItem.SetStorer(p.storer)
+		parseItem.CopyFrom(p)
 		res, err := parseItem.pipeJSON(body)
 		if err != nil {
 			return nil, err
@@ -216,8 +221,7 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 			if len(subitem.Name) == 0 {
 				continue
 			}
-			subitem.SetFetcher(p.fetcher)
-			subitem.SetStorer(p.storer)
+			subitem.CopyFrom(p)
 			subitem.Name = replaceName(subitem.Name, res)
 			res[subitem.Name], _ = subitem.pipeText([]byte(rs))
 		}
@@ -267,12 +271,8 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 		return p.parseRegexp(body, true)
 	}
 	selector := p.Selector
-	if strings.HasPrefix(selector, `$.`) {
-		selector = strings.TrimPrefix(selector, `$`)
-		s = p.rootSelector
-	}
 	if len(selector) > 0 {
-		sel, err = parseHTMLSelector(s, selector)
+		sel, err = p.parseHTMLSelector(s, selector)
 		if err != nil {
 			return nil, err
 		}
@@ -357,8 +357,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 			return nil, ErrArrayNeedSubItem
 		}
 		arrayItem := p.SubItem[0]
-		arrayItem.SetFetcher(p.fetcher)
-		arrayItem.SetStorer(p.storer)
+		arrayItem.CopyFrom(p)
 		res := make([]interface{}, 0)
 		sel.Each(func(index int, child *goquery.Selection) {
 			v, _ := arrayItem.pipeSelection(child)
@@ -374,8 +373,7 @@ func (p *PipeItem) pipeSelection(s *goquery.Selection) (interface{}, error) {
 			if len(subitem.Name) == 0 {
 				continue
 			}
-			subitem.SetFetcher(p.fetcher)
-			subitem.SetStorer(p.storer)
+			subitem.CopyFrom(p)
 			subitem.Name = replaceName(subitem.Name, res)
 			res[subitem.Name], _ = subitem.pipeSelection(sel.Selection)
 		}
@@ -390,12 +388,15 @@ func (p *PipeItem) CallFilter(src interface{}, filters string) (interface{}, err
 	return callFilter(p, src, filters)
 }
 
-func parseHTMLSelector(s *goquery.Selection, selector string) (htmlSelector, error) {
+func (p *PipeItem) parseHTMLSelector(s *goquery.Selection, selector string) (htmlSelector, error) {
 	var attr string
 	if len(selector) == 0 {
 		return htmlSelector{s, attr, selector}, nil
 	}
-
+	if strings.HasPrefix(selector, `$.`) {
+		selector = strings.TrimPrefix(selector, `$`)
+		s = p.doc.Selection
+	}
 	// html: <a class="bn-sharing" data-type="book"></a>
 	// selector: a.bn-sharing//attr[data-type]
 	if idx := strings.Index(selector, "//"); idx > 0 {
@@ -676,8 +677,7 @@ func (p *PipeItem) pipeJSON(body []byte) (interface{}, error) {
 			return nil, errors.New("jsonparse: text is not a json string: " + err.Error())
 		}
 		parseItem := p.SubItem[0]
-		parseItem.SetFetcher(p.fetcher)
-		parseItem.SetStorer(p.storer)
+		parseItem.CopyFrom(p)
 		res, err := parseItem.pipeJSON(body)
 		if err != nil {
 			return nil, err
@@ -693,8 +693,7 @@ func (p *PipeItem) pipeJSON(body []byte) (interface{}, error) {
 			return nil, ErrArrayNeedSubItem
 		}
 		arrayItem := p.SubItem[0]
-		arrayItem.SetFetcher(p.fetcher)
-		arrayItem.SetStorer(p.storer)
+		arrayItem.CopyFrom(p)
 		res := make([]interface{}, 0)
 		for _, r := range v {
 			data, _ := json.Marshal(r)
@@ -712,8 +711,7 @@ func (p *PipeItem) pipeJSON(body []byte) (interface{}, error) {
 			if len(subitem.Name) == 0 {
 				continue
 			}
-			subitem.SetFetcher(p.fetcher)
-			subitem.SetStorer(p.storer)
+			subitem.CopyFrom(p)
 			subitem.Name = replaceName(subitem.Name, res)
 			res[subitem.Name], _ = subitem.pipeJSON(data)
 		}
@@ -754,8 +752,7 @@ func (p *PipeItem) pipeText(body []byte) (interface{}, error) {
 			return nil, errors.New("jsonparse: text is not a json string: " + err.Error())
 		}
 		parseItem := p.SubItem[0]
-		parseItem.SetFetcher(p.fetcher)
-		parseItem.SetStorer(p.storer)
+		parseItem.CopyFrom(p)
 		res, err := parseItem.pipeJSON(body)
 		if err != nil {
 			return nil, err
