@@ -3,7 +3,7 @@ package gopiper
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"testing"
 
@@ -83,7 +83,8 @@ func TestJsonPipe(t *testing.T) {
 	resp, _ := req.Get("http://s.m.taobao.com/search?&q=qq&atype=b&searchfrom=1&from=1&sst=1&m=api4h5").End()
 
 	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	assert.NoError(t, err)
 
 	pipe := PipeItem{}
 	json.Unmarshal([]byte(`
@@ -306,7 +307,8 @@ func TestBaidu(t *testing.T) {
 func TestHtmlJingJiang(t *testing.T) {
 	req := gohttp.New()
 
-	resp, _ := req.Get("http://www.jjwxc.net/bookbase_slave.php?submit=&booktype=&opt=&page=3&endstr=&orderstr=4").End()
+	resp, errs := req.Get("http://www.jjwxc.net/bookbase_slave.php?submit=&booktype=&opt=&page=3&endstr=&orderstr=4").End()
+	assert.Equal(t, 0, len(errs))
 
 	/*
 		   <table class="cytable" width="986" cellspacing="0" cellpadding="0" border="0" align="center">
@@ -356,7 +358,7 @@ func TestHtmlJingJiang(t *testing.T) {
 	*/
 
 	defer resp.Body.Close()
-	bodyGBK, _ := ioutil.ReadAll(resp.Body)
+	bodyGBK, _ := io.ReadAll(resp.Body)
 
 	bodyUTF8 := mahonia.NewDecoder("gb18030").ConvertString(string(bodyGBK))
 	body := []byte(bodyUTF8)
@@ -406,10 +408,11 @@ func TestHtmlJingJiang(t *testing.T) {
 func TestBaiduLocal(t *testing.T) {
 	req := gohttp.New()
 
-	resp, _ := req.Get("http://www.baidu.com/s?wd=采集关键词&rn=50&tn=baidulocal").End()
+	resp, errs := req.Get("http://www.baidu.com/s?wd=采集关键词&rn=50&tn=baidulocal").End()
+	assert.Equal(t, 0, len(errs))
 
 	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	pipe := PipeItem{}
 	err := json.Unmarshal([]byte(`
@@ -456,7 +459,8 @@ func TestTTKBPaging(t *testing.T) {
 
 	req := gohttp.New()
 
-	resp, _ := req.Get("http://r.cnews.qq.com/getSubChannels").End()
+	resp, errs := req.Get("http://r.cnews.qq.com/getSubChannels").End()
+	assert.Equal(t, 0, len(errs))
 	/*
 	   {
 	     "ret": 0,
@@ -483,7 +487,7 @@ func TestTTKBPaging(t *testing.T) {
 	   }
 	*/
 	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	pipe := PipeItem{}
 

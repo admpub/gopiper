@@ -44,5 +44,5 @@ func TestAdvance(t *testing.T) {
 	showjson(v)
 	fmt.Println(`=== [ lv1URL ] ===================================/`)
 	fmt.Println()
-	panic(`p`)
+	// panic(`p`)
 }
