@@ -41,7 +41,7 @@ func init() {
 	RegisterFilter("quote", quote, "用双引号包起来", `quote`, ``)
 	RegisterFilter("unquote", unquote, "取消双引号包围", `unquote`, ``)
 	RegisterFilter("saveto", saveto, "下载并保存文件到指定位置", `saveto(savePath)`, ``)
-	RegisterFilter("fetch", fetch, "抓取网址内容", `fetch(pageType,selector)`, ``)
+	RegisterFilter("fetch", fetch, "抓取网址内容。参数pageType仅支持html、json、text这三个值", `fetch(pageType,selector)`, ``)
 	RegisterFilter("basename", basename, "获取文件名", `basename`, ``)
 	RegisterFilter("extension", extension, "获取扩展名", `extension`, ``)
 }
