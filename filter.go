@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/admpub/regexp2"
+	"github.com/webx-top/com"
 )
 
 func init() {
@@ -193,7 +194,7 @@ func saveto(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interfac
 func preadd(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
 		return params.String() + v, nil
-	}, func() (interface{}, error) {
+	}, func(_ interface{}) (interface{}, error) {
 		return params.String(), nil
 	})
 }
@@ -202,7 +203,7 @@ func preadd(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interfac
 func postadd(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
 		return v + params.String(), nil
-	}, func() (interface{}, error) {
+	}, func(_ interface{}) (interface{}, error) {
 		return params.String(), nil
 	})
 }
@@ -531,14 +532,15 @@ func unixtime(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interf
 	layout := params.String()
 	if len(layout) == 0 {
 		return time.Now().Unix(), nil
-	} else {
-		if v, y := timeFormatNames[layout]; y {
-			layout = v
-		}
 	}
 	srcType := src.Type().Kind()
 	if srcType != reflect.String {
 		return src.Interface(), errors.New("value is not string")
+	}
+	if v, y := timeFormatNames[layout]; y {
+		layout = v
+	} else {
+		layout = com.ConvDateFormat(layout)
 	}
 	t, err := time.Parse(layout, src.String())
 	if err != nil {
