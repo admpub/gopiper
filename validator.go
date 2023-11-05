@@ -110,7 +110,7 @@ func haschinese(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (inte
 func minsize(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	minSize, err := strconv.Atoi(params.String())
 	if err != nil {
-		return nil, fmt.Errorf(`invalid params: _minsize(%s): %w`, params.String(), err)
+		return src.Interface(), fmt.Errorf(`invalid params: _minsize(%s): %w`, params.String(), err)
 	}
 	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
 		if utf8.RuneCountInString(v) < minSize {
@@ -123,7 +123,7 @@ func minsize(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interfa
 func maxsize(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	maxSize, err := strconv.Atoi(params.String())
 	if err != nil {
-		return nil, fmt.Errorf(`invalid params: _maxsize(%s): %w`, params.String(), err)
+		return src.Interface(), fmt.Errorf(`invalid params: _maxsize(%s): %w`, params.String(), err)
 	}
 	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
 		if utf8.RuneCountInString(v) > maxSize {
@@ -136,7 +136,7 @@ func maxsize(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interfa
 func minv(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	minV, err := strconv.ParseFloat(params.String(), 10)
 	if err != nil {
-		return nil, fmt.Errorf(`invalid params: _min(%s): %w`, params.String(), err)
+		return src.Interface(), fmt.Errorf(`invalid params: _min(%s): %w`, params.String(), err)
 	}
 	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
 		if com.Float64(v) < minV {
@@ -161,7 +161,7 @@ func minv(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{
 func maxv(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	maxV, err := strconv.ParseFloat(params.String(), 10)
 	if err != nil {
-		return nil, fmt.Errorf(`invalid params: _max(%s): %w`, params.String(), err)
+		return src.Interface(), fmt.Errorf(`invalid params: _max(%s): %w`, params.String(), err)
 	}
 	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
 		if com.Float64(v) > maxV {
@@ -186,7 +186,7 @@ func maxv(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{
 func size(pipe *PipeItem, src *reflect.Value, params *reflect.Value) (interface{}, error) {
 	size, err := strconv.Atoi(params.String())
 	if err != nil {
-		return nil, fmt.Errorf(`invalid params: _size(%s): %w`, params.String(), err)
+		return src.Interface(), fmt.Errorf(`invalid params: _size(%s): %w`, params.String(), err)
 	}
 	return _filterValue(src.Interface(), func(v string) (interface{}, error) {
 		if utf8.RuneCountInString(v) != size {
