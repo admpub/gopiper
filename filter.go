@@ -303,7 +303,7 @@ func join(pipe *PipeItem, src interface{}, params string) (interface{}, error) {
 	}
 	switch vt := src.(type) {
 	case []string:
-		rs := make([]string, 0)
+		rs := make([]string, 0, len(vt))
 		for _, v := range vt {
 			if len(v) > 0 {
 				rs = append(rs, v)
