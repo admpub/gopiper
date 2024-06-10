@@ -374,7 +374,7 @@ func regexpreplace(pipe *PipeItem, src interface{}, params string) (interface{},
 	case 1:
 		expr = vt[0]
 	}
-	re, err := regexp2.Compile(expr, 0)
+	re, err := regexp2.Compile(expr, regexp2.RE2)
 	if err != nil {
 		return src, err
 	}

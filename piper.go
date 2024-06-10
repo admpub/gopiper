@@ -68,7 +68,7 @@ func VerifySelector(selector string) (err error) {
 	if strings.HasPrefix(selector, REGEXP_PRE) {
 		_, err = regexp.Compile(strings.TrimPrefix(selector, REGEXP_PRE))
 	} else if strings.HasPrefix(selector, REGEXP2_PRE) {
-		_, err = regexp2.Compile(strings.TrimPrefix(selector, REGEXP2_PRE), 0)
+		_, err = regexp2.Compile(strings.TrimPrefix(selector, REGEXP2_PRE), regexp2.RE2)
 	}
 	return
 }
@@ -147,7 +147,7 @@ func (p *PipeItem) parseRegexp(body string, useRegexp2 bool) (interface{}, error
 	}
 	s := p.Selector[preLen:]
 	if useRegexp2 {
-		exp, err := regexp2.Compile(s, regexp2.None)
+		exp, err := regexp2.Compile(s, regexp2.RE2)
 		if err != nil {
 			return nil, err
 		}

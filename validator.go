@@ -255,7 +255,7 @@ func unmatch(pipe *PipeItem, src interface{}, params string) (interface{}, error
 }
 
 func match2(pipe *PipeItem, src interface{}, params string) (interface{}, error) {
-	re, err := regexp2.Compile(params, 0)
+	re, err := regexp2.Compile(params, regexp2.RE2)
 	if err != nil {
 		return src, fmt.Errorf(`invalid regexp2 params: _match2(%s): %w`, params, err)
 	}
@@ -268,7 +268,7 @@ func match2(pipe *PipeItem, src interface{}, params string) (interface{}, error)
 }
 
 func unmatch2(pipe *PipeItem, src interface{}, params string) (interface{}, error) {
-	re, err := regexp2.Compile(params, 0)
+	re, err := regexp2.Compile(params, regexp2.RE2)
 	if err != nil {
 		return src, fmt.Errorf(`invalid regexp2 params: _unmatch2(%s): %w`, params, err)
 	}
